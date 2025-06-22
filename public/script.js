@@ -22,13 +22,16 @@ let pointers = [];
 enterGame.onclick = () => {
   pseudo = prompt("Entrez votre pseudo :") || "Anonyme";
   icon = iconChoice.value;
+  console.log("Pseudo:", pseudo, "Icon:", icon);
   socket.emit('setPseudoAndIcon', { pseudo, icon });
   iconSelect.style.display = 'none';
 };
 
 socket.on('lobbyUpdate', ({ players, hostId }) => {
-  playersList.innerHTML = '<h3>Joueurs connectés :</h3>' + players.map(p => `<div>${p.pseudo}</div>`).join('');
+  playersList.innerHTML = '<h3>Joueurs connectés :</h3>' +
+    players.map(p => `<div>${p.pseudo}</div>`).join('');
   if (socket.id === hostId) startBtn.style.display = 'inline-block';
+  lobby.style.display = 'block';
 });
 
 startBtn.onclick = () => socket.emit('startGame');
