@@ -1,11 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Speedclick</title>
+<style>
+body {
+margin: 0; background: white; font-family: Arial, sans-serif;
+display: flex; flex-direction: column; height: 100vh;
+}
+#gameCanvas {
+border: 1px solid black;
+flex-grow: 1;
+display: block;
+margin: 10px auto;
+background: #f9f9f9;
+}
+#chat {
+height: 120px;
+overflow-y: auto;
+border-top: 1px solid #ccc;
+padding: 5px 10px;
+background: #eee;
+font-size: 14px;
+}
+#chatForm {
+display: flex;
+padding: 5px 10px;
+background: #ddd;
+}
+#chatInput {
+flex-grow: 1;
+padding: 5px;
+font-size: 14px;
+}
+#chatForm button {
+padding: 5px 10px;
+font-size: 14px;
+margin-left: 5px;
+}
+</style>
+</head>
 <body>
 <canvas id="gameCanvas" width="800" height="600"></canvas>
-<div id="sidebar">
-<div id="timer">Temps restant : 7s</div>
-<div id="leaderboard"></div>
-<div id="chat-box" style="height: 200px; overflow-y: auto;"></div>
-<input id="chat-input" type="text" placeholder="Message..." />
-</div>
+
+<div id="chat"></div>
+<form id="chatForm">
+<input id="chatInput" autocomplete="off" placeholder="Écrire un message..." />
+<button>Envoyer</button>
+</form>
+
 <script src="/socket.io/socket.io.js"></script>
 <script src="script.js"></script>
 </body>
+</html>
