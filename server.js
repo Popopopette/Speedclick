@@ -112,18 +112,6 @@ io.on('connection', socket => {
     io.emit('chatMessage', { pseudo, message });
   });
 
-  socket.on('restartGame', () => {
-    if (socket.id === hostId) {
-      players.forEach(p => {
-        p.score = 0;
-      });
-      roundIndex = -1;
-      currentShape = null;
-      clickData = [];
-      io.emit('lobbyUpdate', { players, hostId });
-    }
-  });
-
   socket.on('disconnect', () => {
     players = players.filter(p => p.id !== socket.id);
     if (socket.id === hostId) {
