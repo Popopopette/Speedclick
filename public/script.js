@@ -127,3 +127,30 @@ socket.on('chatMessage', ({ pseudo, message }) => {
   chatDiv.appendChild(line);
   chatDiv.scrollTop = chatDiv.scrollHeight;
 });
+
+socket.on('countdown', () => {
+  const countdownDiv = document.createElement('div');
+  countdownDiv.id = 'countdown';
+  countdownDiv.style.position = 'absolute';
+  countdownDiv.style.top = '40%';
+  countdownDiv.style.left = '50%';
+  countdownDiv.style.transform = 'translate(-50%, -50%)';
+  countdownDiv.style.fontSize = '80px';
+  countdownDiv.style.fontWeight = 'bold';
+  countdownDiv.style.zIndex = '9999';
+  document.body.appendChild(countdownDiv);
+
+  let count = 3;
+  const interval = setInterval(() => {
+    if (count > 0) {
+      countdownDiv.textContent = count;
+      count--;
+    } else if (count === 0) {
+      countdownDiv.textContent = "GO!";
+      count--;
+    } else {
+      clearInterval(interval);
+      countdownDiv.remove();
+    }
+  }, 1000);
+});
