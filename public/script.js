@@ -1,4 +1,9 @@
 const socket = io();
+
+// Demander le pseudo au joueur
+let pseudo = prompt("Entrez votre pseudo :");
+if (!pseudo) pseudo = "Anonyme"; // Valeur par défaut
+socket.emit('setPseudo', pseudo);
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 let currentShape = null;
