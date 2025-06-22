@@ -14,32 +14,23 @@ const chatDiv = document.getElementById('chat');
 const chatForm = document.getElementById('chatForm');
 const chatInput = document.getElementById('chatInput');
 
-const lobbyCanvas = document.getElementById('lobbyCanvas');
-const lctx = lobbyCanvas.getContext('2d');
-const fightVideo = document.getElementById('fightVideo');
-
 let currentShape = null;
 let pointers = [];
-let lobbyPointers = [];
+let clickEffects = [];
 
 const clickSound = new Audio("Impact_Speedclick.mp3");
 
-socket.on('lobbyUpdate', ({ players, hostId: newHostId }) => {
-  hostId = newHostId;
-  isHost = socket.id === hostId;
-
+socket.on('lobbyUpdate', ({ players, hostId }) => {
   playersList.innerHTML = '<h3>Joueurs connectés :</h3>' +
     players.map(p => `<div>${p.pseudo}</div>`).join('');
   if (socket.id === hostId) startBtn.style.display = 'inline-block';
   lobby.style.display = 'block';
-  lobbyCanvas.style.display = 'block';
 });
 
 startBtn.onclick = () => socket.emit('startGame');
 
 socket.on('newShape', ({ shape, round }) => {
   lobby.style.display = 'none';
-  lobbyCanvas.style.display = 'none';
   canvas.style.display = 'block';
   timer.style.display = 'block';
   leaderboard.style.display = 'block';
@@ -73,6 +64,7 @@ canvas.addEventListener('click', e => {
     socket.emit('playerClick');
     clickSound.currentTime = 0;
     clickSound.play();
+    clickEffects.push({ x, y, radius: 10, alpha: 1 });
   }
 });
 
@@ -82,20 +74,10 @@ canvas.addEventListener('mousemove', e => {
   socket.emit('mouseMove', { x, y });
 });
 
-lobbyCanvas.addEventListener('mousemove', e => {
-  const rect = lobbyCanvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-  socket.emit('mouseMove', { x, y });
-});
-
-socket.on('pointerUpdate', data => {
-  pointers = data.filter(p => p.id !== socket.id);
-  lobbyPointers = data;
-});
-
 function drawEverything() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Shape
   if (currentShape) {
     ctx.fillStyle = currentShape.color;
     if (currentShape.type === 'circle') {
@@ -107,41 +89,29 @@ function drawEverything() {
     }
   }
 
+  // Pointers
   pointers.forEach(p => {
     ctx.font = "20px Arial";
     ctx.fillText(p.icon, p.x, p.y);
   });
 
+  // Animation click (auréole)
+  clickEffects = clickEffects.filter(fx => {
+    ctx.beginPath();
+    ctx.strokeStyle = `rgba(0, 0, 0, ${fx.alpha})`;
+    ctx.arc(fx.x, fx.y, fx.radius, 0, 2 * Math.PI);
+    ctx.stroke();
+    fx.radius += 2;
+    fx.alpha -= 0.05;
+    return fx.alpha > 0;
+  });
+
   requestAnimationFrame(drawEverything);
 }
 
-function drawLobby() {
-  lctx.clearRect(0, 0, lobbyCanvas.width, lobbyCanvas.height);
-
-  lobbyPointers.forEach(p => {
-    lctx.font = "24px Arial";
-    lctx.fillText(p.icon, p.x, p.y);
-  });
-
-  for (let i = 0; i < lobbyPointers.length; i++) {
-    for (let j = i + 1; j < lobbyPointers.length; j++) {
-      const a = lobbyPointers[i];
-      const b = lobbyPointers[j];
-      const dx = a.x - b.x;
-      const dy = a.y - b.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 30) {
-        const fx = (a.x + b.x) / 2;
-        const fy = (a.y + b.y) / 2;
-        fightVideo.play();
-        lctx.drawImage(fightVideo, fx - 20, fy - 20, 40, 40);
-      }
-    }
-  }
-
-  requestAnimationFrame(drawLobby);
-}
-drawLobby();
+socket.on('pointerUpdate', data => {
+  pointers = data.filter(p => p.id !== socket.id);
+});
 
 chatForm.addEventListener('submit', e => {
   e.preventDefault();
