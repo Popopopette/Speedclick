@@ -22,7 +22,8 @@ let clickEffects = [];
 
 const clickSound = new Audio("Impact_Speedclick.mp3");
 
-socket.on('lobbyUpdate', ({ players, hostId }) => {
+socket.on('lobbyUpdate', ({ players, hostId: newHostId }) => {
+  hostId = newHostId;
   playersList.innerHTML = '<h3>Joueurs connectés :</h3>' +
     players.map(p => `<div>${p.pseudo}</div>`).join('');
   if (socket.id === hostId) startBtn.style.display = 'inline-block';
