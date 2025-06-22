@@ -26,6 +26,7 @@ Un petit chat textuel est intégré en haut de la page pour discuter pendant la 
 
 ## Déploiement recommandé
 
+
 Vous pouvez héberger ce projet sur :
 - [Render](https://render.com)
 - [Railway](https://railway.app)
