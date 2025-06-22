@@ -91,14 +91,6 @@ clickData.forEach((entry, index) => {
   }
 });
 
-        
-        player.score += points;
-
-        if (gameMode === 'battle' && player.score <= 0) {
-          io.to(player.id).emit('eliminated');
-        }
-      }
-    });
 
     if (gameMode === 'battle') {
       const remaining = players.filter(p => p.score > 0);
