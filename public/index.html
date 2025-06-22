@@ -4,101 +4,35 @@
   <meta charset="UTF-8">
   <title>Speedclick</title>
   <style>
-    body {
-      font-family: sans-serif;
-      margin: 0;
-      background-color: #fff;
-    }
-
-    /* ✅ Taille normale du logo */
+    body { font-family: sans-serif; margin: 0; background: #fff; }
     #logo {
-      width: 150px;
-      margin: 10px;
-      display: inline-block;
-      position: absolute;
-      top: 0;
-      left: 0;
+      width: 150px; margin: 10px;
+      position: absolute; top: 0; left: 0;
       z-index: 10;
     }
-
     #main {
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      margin-top: 60px;
-      gap: 20px;
+      display: flex; justify-content: center;
+      margin-top: 70px; gap: 20px;
     }
-
-    canvas {
-      border: 1px solid #000;
-      display: block;
+    canvas { border: 1px solid #000; display: block; }
+    #sidePanel, #chatPanel {
+      width: 200px; height: 600px; display: flex; flex-direction: column;
     }
-
-    #sidePanel {
-      width: 200px;
-      height: 600px;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      align-items: center;
-      text-align: center;
-    }
-
-    #timer, #leaderboard {
-      width: 100%;
-      margin-top: 10px;
-    }
-
-    #chatPanel {
-      width: 200px;
-      height: 600px;
-      display: flex;
-      flex-direction: column;
-    }
-
-    #chat {
-      flex: 1;
-      overflow-y: auto;
-      border: 1px solid #ccc;
-      background: #f5f5f5;
-      text-align: left;
-      padding: 10px;
-      font-size: 14px;
-    }
-
-    #chatForm {
-      display: flex;
-      gap: 5px;
-      padding: 10px 0;
-    }
-
-    #chatInput {
-      flex: 1;
-    }
-
-    #lobby {
-      padding: 20px;
-      text-align: center;
-    }
-
-    button {
-      padding: 6px 12px;
-      font-size: 14px;
-    }
+    #chat { flex: 1; overflow-y: auto; border: 1px solid #ccc; padding: 10px; background: #f5f5f5; }
+    #chatForm { display: flex; gap: 5px; padding: 10px 0; }
+    #chatInput { flex: 1; }
+    #timer, #leaderboard { margin-top: 10px; text-align: center; }
+    #lobby { padding: 20px; text-align: center; }
   </style>
 </head>
 <body>
-
-  <img src="speedclick.png" alt="Speedclick logo" id="logo" />
-
+  <img src="speedclick.png" id="logo" alt="Speedclick logo">
   <div id="main">
     <div id="sidePanel">
       <div id="timer" style="display:none"></div>
       <div id="leaderboard" style="display:none"></div>
     </div>
-
     <canvas id="gameCanvas" width="800" height="600" style="display:none"></canvas>
-
     <div id="chatPanel">
       <div id="chat"></div>
       <form id="chatForm">
@@ -107,13 +41,11 @@
       </form>
     </div>
   </div>
-
   <div id="lobby">
     <h2>En attente d'autres joueurs...</h2>
     <button id="startBtn" style="display:none">Démarrer la partie</button>
     <div id="playersList"></div>
   </div>
-
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js" defer></script>
 </body>
