@@ -1,17 +1,11 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <title>Speedclick</title>
-  <link rel="stylesheet" href="style.css">
-</head>
 <body>
-  <div id="chat">
-    <div id="chat-box"></div>
-    <input type="text" id="chat-input" placeholder="Envoyer un message...">
-  </div>
-  <canvas id="gameCanvas" width="800" height="600"></canvas>
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="script.js"></script>
+<canvas id="gameCanvas" width="800" height="600"></canvas>
+<div id="sidebar">
+<div id="timer">Temps restant : 7s</div>
+<div id="leaderboard"></div>
+<div id="chat-box" style="height: 200px; overflow-y: auto;"></div>
+<input id="chat-input" type="text" placeholder="Message..." />
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="script.js"></script>
 </body>
-</html>
