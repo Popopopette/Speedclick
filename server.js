@@ -49,9 +49,7 @@ function calculatePoints(order, shape) {
 
 function startRound() {
   roundIndex++;
-  if (roundIndex >= MAX_ROUNDS) {
-    return endGame();
-  }
+  if (roundIndex >= MAX_ROUNDS) return endGame();
 
   clickData = [];
   currentShape = randomShape(`round-${roundIndex}`);
@@ -61,9 +59,7 @@ function startRound() {
     clickData.sort((a, b) => a.timestamp - b.timestamp);
     clickData.forEach((entry, index) => {
       const player = players.find(p => p.id === entry.id);
-      if (player) {
-        player.score += calculatePoints(index, currentShape);
-      }
+      if (player) player.score += calculatePoints(index, currentShape);
     });
 
     io.emit('scoreUpdate', players);
@@ -80,22 +76,35 @@ function endGame() {
 }
 
 io.on('connection', socket => {
-  socket.on('setPseudo', pseudo => {
-    players.push({ id: socket.id, pseudo, score: 0 });
+  socket.on('setPseudoAndIcon', ({ pseudo, icon }) => {
+    players.push({ id: socket.id, pseudo, icon, score: 0, x: 0, y: 0 });
     if (!hostId) hostId = socket.id;
     io.emit('lobbyUpdate', { players, hostId });
   });
 
   socket.on('startGame', () => {
-    if (socket.id === hostId) {
-      startRound();
-    }
+    if (socket.id === hostId) startRound();
   });
 
   socket.on('playerClick', () => {
     if (roundIndex >= 0 && !clickData.some(c => c.id === socket.id)) {
       clickData.push({ id: socket.id, timestamp: Date.now() });
     }
+  });
+
+  socket.on('mouseMove', ({ x, y }) => {
+    const player = players.find(p => p.id === socket.id);
+    if (player) {
+      player.x = x;
+      player.y = y;
+    }
+    io.emit('pointerUpdate', players.map(p => ({
+      id: p.id,
+      x: p.x,
+      y: p.y,
+      icon: p.icon,
+      pseudo: p.pseudo
+    })));
   });
 
   socket.on('chatMessage', message => {
