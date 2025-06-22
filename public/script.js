@@ -27,11 +27,15 @@ const clickSound = new Audio("Impact_Speedclick.mp3");
 
 socket.on('lobbyUpdate', ({ players, hostId: newHostId }) => {
   hostId = newHostId;
+  isHost = socket.id === hostId;
+
   playersList.innerHTML = '<h3>Joueurs connectés :</h3>' +
     players.map(p => `<div>${p.pseudo}</div>`).join('');
-  if (socket.id === hostId) startBtn.style.display = 'inline-block';
+
+  if (isHost) startBtn.style.display = 'inline-block';
   lobby.style.display = 'block';
 });
+
 
 startBtn.onclick = () => socket.emit('startGame');
 
@@ -58,6 +62,28 @@ socket.on('scoreUpdate', players => {
 socket.on('gameEnded', players => {
   alert("🎉 Partie terminée !");
   leaderboard.innerHTML += '<h4>Fin de partie</h4>';
+  const finalWrap = document.createElement('div');
+finalWrap.id = 'finalWrap';
+finalWrap.innerHTML = '<h3>🏁 Scores finaux</h3>' +
+  players.sort((a, b) => b.score - a.score)
+    .map(p => `<div>${p.pseudo} : ${p.score} pts</div>`)
+    .join('');
+
+document.body.appendChild(finalWrap);
+
+if (isHost) {
+  const replayBtn = document.createElement('button');
+  replayBtn.textContent = "🔁 Rejouer une partie";
+  replayBtn.style.marginTop = '20px';
+  replayBtn.onclick = () => {
+    socket.emit('restartGame');
+    finalWrap.remove();
+    replayBtn.remove();
+    location.reload(); // recharge propre pour tous les états
+  };
+  document.body.appendChild(replayBtn);
+}
+
 });
 
 const isHost = () => {
