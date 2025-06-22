@@ -57,7 +57,7 @@ function calculateBattlePoints(order) {
 
 function startRound() {
   roundIndex++;
-  if (roundIndex >= MAX_ROUNDS && gameMode === 'classic') return endGame();
+if (gameMode === 'classic' && roundIndex >= MAX_ROUNDS) return endGame();
   clickData = [];
   currentShape = randomShape(`round-${roundIndex}`);
   io.emit('newShape', { shape: currentShape, round: roundIndex + 1 });
@@ -67,9 +67,14 @@ function startRound() {
     clickData.forEach((entry, index) => {
       const player = players.find(p => p.id === entry.id);
       if (player) {
-        const points = gameMode === 'battle'
-          ? calculateBattlePoints(index)
-          : calculatePoints(index, currentShape);
+        let points = gameMode === 'battle'
+  ? calculateBattlePoints(index)
+  : calculatePoints(index, currentShape);
+
+if (gameMode === 'battle' && currentShape.color === 'red') {
+  points *= 2;
+}
+        
         player.score += points;
 
         if (gameMode === 'battle' && player.score <= 0) {
