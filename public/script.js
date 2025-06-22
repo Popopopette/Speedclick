@@ -1,7 +1,8 @@
 const socket = io();
 
-let pseudo = "";
-let icon = "";
+let pseudo = prompt("Entrez votre pseudo :") || "Anonyme";
+socket.emit('setPseudo', pseudo);
+
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const lobby = document.getElementById('lobby');
@@ -12,20 +13,9 @@ const leaderboard = document.getElementById('leaderboard');
 const chatDiv = document.getElementById('chat');
 const chatForm = document.getElementById('chatForm');
 const chatInput = document.getElementById('chatInput');
-const iconSelect = document.getElementById('iconSelect');
-const iconChoice = document.getElementById('iconChoice');
-const enterGame = document.getElementById('enterGame');
 
 let currentShape = null;
 let pointers = [];
-
-enterGame.onclick = () => {
-  pseudo = prompt("Entrez votre pseudo :") || "Anonyme";
-  icon = iconChoice.value;
-  console.log("Pseudo:", pseudo, "Icon:", icon);
-  socket.emit('setPseudoAndIcon', { pseudo, icon });
-  iconSelect.style.display = 'none';
-};
 
 socket.on('lobbyUpdate', ({ players, hostId }) => {
   playersList.innerHTML = '<h3>Joueurs connectés :</h3>' +
