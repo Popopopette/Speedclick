@@ -7,12 +7,11 @@
     body { font-family: sans-serif; margin: 0; background: #fff; }
     #logo {
       width: 150px; margin: 10px;
-      position: absolute; top: 0; left: 0;
-      z-index: 10;
+      position: absolute; top: 0; left: 0; z-index: 10;
     }
     #main {
       display: flex; justify-content: center;
-      margin-top: 70px; gap: 20px;
+      margin-top: 60px; gap: 20px;
     }
     canvas { border: 1px solid #000; display: block; }
     #sidePanel, #chatPanel {
@@ -21,8 +20,9 @@
     #chat { flex: 1; overflow-y: auto; border: 1px solid #ccc; padding: 10px; background: #f5f5f5; }
     #chatForm { display: flex; gap: 5px; padding: 10px 0; }
     #chatInput { flex: 1; }
-    #leaderboard { margin-top: 10px; text-align: center; }
+    #leaderboard { text-align: center; }
     #lobby { padding: 20px; text-align: center; }
+    button { padding: 6px 12px; font-size: 14px; }
   </style>
 </head>
 <body>
@@ -41,7 +41,7 @@
     </div>
   </div>
   <div id="lobby">
-    <h2>En attente d'autres joueurs...</h2>
+    <h2>En attente d'autres joueurs…</h2>
     <button id="startBtn" style="display:none">Démarrer la partie</button>
     <div id="playersList"></div>
   </div>
