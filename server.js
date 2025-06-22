@@ -121,4 +121,20 @@ io.on('connection', socket => {
   });
 });
 
+io.on('connection', socket => {
+  // (...) tu gardes tout ici
+
+  socket.on('restartGame', () => {
+    if (socket.id === hostId) {
+      players.forEach(p => {
+        p.score = 0;
+      });
+      roundIndex = -1;
+      currentShape = null;
+      clickData = [];
+      io.emit('lobbyUpdate', { players, hostId });
+    }
+  });
+});
+
 server.listen(PORT, () => console.log(`Server on port ${PORT}`));
