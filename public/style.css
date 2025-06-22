@@ -1,0 +1,28 @@
+body {
+  background: white;
+  margin: 0;
+  font-family: sans-serif;
+}
+
+#chat {
+  font-size: 12px;
+  margin: 10px;
+}
+
+#chat-box {
+  height: 100px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  padding: 5px;
+  margin-bottom: 5px;
+}
+
+#chat-input {
+  width: 300px;
+}
+
+canvas {
+  display: block;
+  margin: auto;
+  border: 1px solid #ccc;
+}
