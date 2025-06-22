@@ -1,3 +1,6 @@
+let hostId = null;
+let isHost = false;
+
 const socket = io();
 
 let pseudo = prompt("Entrez votre pseudo :") || "Anonyme";
