@@ -11,7 +11,7 @@
     }
 
     #logo {
-      width: 150px;
+      width: 300px;
       margin: 10px;
       display: inline-block;
       position: absolute;
@@ -20,15 +20,44 @@
       z-index: 10;
     }
 
+    #main {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      margin-top: 60px;
+      gap: 20px;
+    }
+
     canvas {
       border: 1px solid #000;
       display: block;
-      margin: 60px auto 20px; /* Décale un peu à cause du logo */
     }
 
-    #leaderboard, #timer, #chat {
-      margin-top: 20px;
-      text-align: center;
+    #chatPanel {
+      width: 400px;
+      height: 600px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      background: #f5f5f5;
+      text-align: left;
+      padding: 10px;
+      font-size: 14px;
+    }
+
+    #chatForm {
+      display: flex;
+      gap: 5px;
+      padding: 10px 0;
+    }
+
+    #chatInput {
+      flex: 1;
     }
 
     #lobby {
@@ -36,26 +65,9 @@
       text-align: center;
     }
 
-    #chat {
-      height: 150px;
-      overflow-y: auto;
-      border: 1px solid #ccc;
-      margin: 10px auto;
-      width: 400px;
-      background: #f5f5f5;
-      text-align: left;
-      padding: 5px;
-    }
-
-    #chatForm {
-      display: flex;
-      justify-content: center;
-      gap: 5px;
-      margin-bottom: 20px;
-    }
-
-    #chatInput {
-      width: 300px;
+    #timer, #leaderboard {
+      text-align: center;
+      margin-top: 20px;
     }
 
     button {
@@ -66,11 +78,21 @@
 </head>
 <body>
 
-  <!-- ✅ Logo en haut à gauche -->
-  <img src="Speedclick.png" alt="Speedclick logo" id="logo" />
+  <!-- Logo en haut à gauche -->
+  <img src="speedclick.png" alt="Speedclick logo" id="logo" />
 
-  <!-- Canvas du jeu -->
-  <canvas id="gameCanvas" width="800" height="600" style="display:none"></canvas>
+  <!-- Conteneur principal : canvas + chat -->
+  <div id="main">
+    <canvas id="gameCanvas" width="800" height="600" style="display:none"></canvas>
+
+    <div id="chatPanel">
+      <div id="chat"></div>
+      <form id="chatForm">
+        <input id="chatInput" autocomplete="off" placeholder="Message...">
+        <button>Envoyer</button>
+      </form>
+    </div>
+  </div>
 
   <!-- Lobby d'attente -->
   <div id="lobby">
@@ -82,13 +104,6 @@
   <!-- Timer et scores -->
   <div id="timer" style="display:none"></div>
   <div id="leaderboard" style="display:none"></div>
-
-  <!-- Chat -->
-  <div id="chat"></div>
-  <form id="chatForm">
-    <input id="chatInput" autocomplete="off">
-    <button>Envoyer</button>
-  </form>
 
   <!-- Scripts -->
   <script src="/socket.io/socket.io.js"></script>
