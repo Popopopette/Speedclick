@@ -16,6 +16,9 @@ const chatInput = document.getElementById('chatInput');
 
 let currentShape = null;
 let pointers = [];
+let clickEffects = [];
+
+const clickSound = new Audio("Impact_Speedclick.mp3");
 
 socket.on('lobbyUpdate', ({ players, hostId }) => {
   playersList.innerHTML = '<h3>Joueurs connectés :</h3>' +
@@ -57,7 +60,12 @@ canvas.addEventListener('click', e => {
   const x = e.clientX - rect.left, y = e.clientY - rect.top;
   const dx = x - currentShape.x, dy = y - currentShape.y;
   const inShape = dx*dx + dy*dy <= currentShape.size*currentShape.size;
-  if (inShape) socket.emit('playerClick');
+  if (inShape) {
+    socket.emit('playerClick');
+    clickSound.currentTime = 0;
+    clickSound.play();
+    clickEffects.push({ x, y, radius: 10, alpha: 1 });
+  }
 });
 
 canvas.addEventListener('mousemove', e => {
@@ -68,6 +76,8 @@ canvas.addEventListener('mousemove', e => {
 
 function drawEverything() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Shape
   if (currentShape) {
     ctx.fillStyle = currentShape.color;
     if (currentShape.type === 'circle') {
@@ -79,9 +89,21 @@ function drawEverything() {
     }
   }
 
+  // Pointers
   pointers.forEach(p => {
     ctx.font = "20px Arial";
     ctx.fillText(p.icon, p.x, p.y);
+  });
+
+  // Animation click (auréole)
+  clickEffects = clickEffects.filter(fx => {
+    ctx.beginPath();
+    ctx.strokeStyle = `rgba(0, 0, 0, ${fx.alpha})`;
+    ctx.arc(fx.x, fx.y, fx.radius, 0, 2 * Math.PI);
+    ctx.stroke();
+    fx.radius += 2;
+    fx.alpha -= 0.05;
+    return fx.alpha > 0;
   });
 
   requestAnimationFrame(drawEverything);
