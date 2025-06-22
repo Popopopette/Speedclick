@@ -3,6 +3,8 @@ const socket = io();
 let pseudo = prompt("Entrez votre pseudo :") || "Anonyme";
 socket.emit('setPseudo', pseudo);
 
+let hostId = null;
+
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const lobby = document.getElementById('lobby');
@@ -53,6 +55,30 @@ socket.on('gameEnded', players => {
   alert("🎉 Partie terminée !");
   leaderboard.innerHTML += '<h4>Fin de partie</h4>';
 });
+
+const isHost = () => {
+  return socket.id === hostId;
+};
+
+const finalTable = document.createElement('div');
+finalTable.innerHTML = '<h3>Scores finaux</h3>' +
+  players.sort((a,b) => b.score - a.score)
+    .map(p => `<div>${p.pseudo} : ${p.score} pts</div>`)
+    .join('');
+document.body.appendChild(finalTable);
+
+if (isHost()) {
+  const replayBtn = document.createElement('button');
+  replayBtn.textContent = "🔁 Rejouer une partie";
+  replayBtn.style.marginTop = '20px';
+  replayBtn.onclick = () => {
+    finalTable.remove();
+    replayBtn.remove();
+    socket.emit('restartGame');
+  };
+  document.body.appendChild(replayBtn);
+}
+
 
 canvas.addEventListener('click', e => {
   if (!currentShape) return;
