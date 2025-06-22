@@ -1,107 +1,149 @@
 const socket = io();
+
+let pseudo = prompt("Entrez votre pseudo :");
+if (!pseudo) pseudo = "Anonyme";
+socket.emit('setPseudo', pseudo);
+
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+
+const chatDiv = document.getElementById('chat');
+const chatForm = document.getElementById('chatForm');
+const chatInput = document.getElementById('chatInput');
+
+let players = [];
+let shapes = [];
+let clickedPlayers = new Set();
 let currentShape = null;
-let hasClicked = false;
-let pseudo = '';
+let shapeIdCounter = 0;
 
-function askPseudo() {
-pseudo = prompt("Entrez votre pseudo :") || "Joueur";
-socket.emit('setPseudo', pseudo);
-}
-
-askPseudo();
-
-socket.on('newShape', ({ shape, players }) => {
-hasClicked = false;
-currentShape = shape;
-drawShape();
-updateLeaderboard(players);
-startTimer();
+// Chat events
+socket.on('chatMessage', ({ pseudo, message }) => {
+const p = document.createElement('p');
+p.textContent = `${pseudo}: ${message}`;
+chatDiv.appendChild(p);
+chatDiv.scrollTop = chatDiv.scrollHeight;
 });
 
-canvas.addEventListener('click', (e) => {
-if (!currentShape || hasClicked) return;
-const rect = canvas.getBoundingClientRect();
-const x = e.clientX - rect.left;
-const y = e.clientY - rect.top;
-if (isInsideShape(x, y, currentShape)) {
-hasClicked = true;
-socket.emit('playerClick', { time: Date.now() });
-}
+chatForm.addEventListener('submit', e => {
+e.preventDefault();
+const msg = chatInput.value.trim();
+if (msg.length === 0) return;
+socket.emit('chatMessage', msg);
+chatInput.value = '';
 });
 
-function drawShape() {
-ctx.clearRect(0, 0, canvas.width, canvas.height);
-if (!currentShape) return;
-ctx.fillStyle = currentShape.color;
-const { x, y, size, type } = currentShape;
-if (type === 'circle') {
+// Receive updated players list
+socket.on('playersUpdate', data => {
+players = data;
+});
+
+// Game logic
+
+function randomInt(min, max) {
+return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function randomChoice(arr) {
+return arr[randomInt(0, arr.length - 1)];
+}
+
+function createShape() {
+const types = ['square', 'circle', 'diamond'];
+const colors = ['red', 'blue', 'green', 'orange', 'purple'];
+
+const size = randomInt(30, 80);
+const color = randomChoice(colors);
+const type = randomChoice(types);
+
+const x = randomInt(size, canvas.width - size);
+const y = randomInt(size, canvas.height - size);
+
+shapeIdCounter++;
+return { id: shapeIdCounter, x, y, size, color, type };
+}
+
+function drawShape(shape) {
+ctx.fillStyle = shape.color;
 ctx.beginPath();
-ctx.arc(x, y, size, 0, 2 * Math.PI);
+switch (shape.type) {
+case 'square':
+ctx.fillRect(shape.x - shape.size / 2, shape.y - shape.size / 2, shape.size, shape.size);
+break;
+case 'circle':
+ctx.arc(shape.x, shape.y, shape.size / 2, 0, Math.PI * 2);
 ctx.fill();
-} else if (type === 'square') {
-ctx.fillRect(x - size / 2, y - size / 2, size, size);
-} else if (type === 'diamond') {
-ctx.beginPath();
-ctx.moveTo(x, y - size);
-ctx.lineTo(x + size, y);
-ctx.lineTo(x, y + size);
-ctx.lineTo(x - size, y);
+break;
+case 'diamond':
+ctx.moveTo(shape.x, shape.y - shape.size / 2);
+ctx.lineTo(shape.x + shape.size / 2, shape.y);
+ctx.lineTo(shape.x, shape.y + shape.size / 2);
+ctx.lineTo(shape.x - shape.size / 2, shape.y);
 ctx.closePath();
 ctx.fill();
+break;
 }
 }
 
-function isInsideShape(x, y, shape) {
-const dx = x - shape.x;
-const dy = y - shape.y;
-if (shape.type === 'circle') return dx * dx + dy * dy <= shape.size * shape.size;
-if (shape.type === 'square') return Math.abs(dx) <= shape.size / 2 && Math.abs(dy) <= shape.size / 2;
-if (shape.type === 'diamond') return Math.abs(dx) + Math.abs(dy) <= shape.size;
+function clearCanvas() {
+ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function shapeContainsPoint(shape, px, py) {
+switch (shape.type) {
+case 'square':
+return (px >= shape.x - shape.size / 2 && px <= shape.x + shape.size / 2 &&
+py >= shape.y - shape.size / 2 && py <= shape.y + shape.size / 2);
+case 'circle':
+const dx = px - shape.x;
+const dy = py - shape.y;
+return (dx * dx + dy * dy) <= (shape.size / 2) * (shape.size / 2);
+case 'diamond':
+// Approximate diamond as rotated square
+const rx = Math.abs(px - shape.x);
+const ry = Math.abs(py - shape.y);
+return (rx + ry) <= shape.size / 2;
+default:
 return false;
 }
-
-function updateLeaderboard(players) {
-const board = document.getElementById('leaderboard');
-board.innerHTML = '<strong>Classement</strong><br>';
-[...players]
-.sort((a, b) => b.score - a.score)
-.forEach(p => {
-board.innerHTML += `${p.pseudo}: ${p.score}<br>`;
-});
 }
 
-socket.on('updateScores', updateLeaderboard);
+function startRound() {
+clickedPlayers.clear();
+currentShape = createShape();
+clearCanvas();
+drawShape(currentShape);
+}
 
-// Timer
-let timerInterval;
-function startTimer() {
-const timer = document.getElementById('timer');
-let seconds = 7;
-clearInterval(timerInterval);
-timer.textContent = `Temps restant : ${seconds}s`;
-timerInterval = setInterval(() => {
-seconds--;
-timer.textContent = `Temps restant : ${seconds}s`;
-if (seconds <= 0) clearInterval(timerInterval);
+canvas.addEventListener('click', e => {
+if (!currentShape) return;
+const rect = canvas.getBoundingClientRect();
+const clickX = e.clientX - rect.left;
+const clickY = e.clientY - rect.top;
+
+if (shapeContainsPoint(currentShape, clickX, clickY)) {
+if (!clickedPlayers.has(pseudo)) {
+clickedPlayers.add(pseudo);
+const timestamp = Date.now();
+socket.emit('playerClicked', { shapeId: currentShape.id, timestamp });
+console.log(`Clicked shape ${currentShape.id} at ${timestamp}`);
+
+// Optionnel : afficher un petit retour visuel
+ctx.strokeStyle = 'black';
+ctx.lineWidth = 3;
+ctx.strokeRect(currentShape.x - currentShape.size / 2, currentShape.y - currentShape.size / 2, currentShape.size, currentShape.size);
+}
+}
+});
+
+// Quand tous les joueurs ont cliqué, on peut lancer la prochaine forme
+socket.on('playersUpdate', players => {
+if (currentShape && clickedPlayers.size >= players.length && players.length > 0) {
+startRound();
+}
+});
+
+// Démarrer la première forme après un court délai
+setTimeout(() => {
+startRound();
 }, 1000);
-}
-
-// Chat
-const chatBox = document.getElementById('chat-box');
-const chatInput = document.getElementById('chat-input');
-
-chatInput.addEventListener('keydown', (e) => {
-if (e.key === 'Enter' && chatInput.value.trim()) {
-socket.emit('chatMessage', chatInput.value);
-chatInput.value = '';
-}
-});
-
-socket.on('chatMessage', ({ pseudo, text }) => {
-const msg = document.createElement('div');
-msg.textContent = pseudo + ': ' + text;
-chatBox.appendChild(msg);
-chatBox.scrollTop = chatBox.scrollHeight;
-});
