@@ -1,60 +1,21 @@
-// script.js
-
 const socket = io();
-
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-const chatForm = document.getElementById("chatForm");
-const chatInput = document.getElementById("chatInput");
-const chatDiv = document.getElementById("chat");
-const lobby = document.getElementById("lobby");
-const startBtn = document.getElementById("startBtn");
-const playersList = document.getElementById("playersList");
-const timerDiv = document.getElementById("timer");
-const leaderboardDiv = document.getElementById("leaderboard");
+let canvas = document.getElementById("gameCanvas");
+let ctx = canvas.getContext("2d");
 
 let pseudo = prompt("Entrez votre pseudo :") || "Anonyme";
-let players = [];
+socket.emit("setPseudo", pseudo);
+
 let currentShape = null;
+let players = [];
 let clickEffects = [];
+
 let lastMouseX = 0;
 let lastMouseY = 0;
 
-const clickSound = new Audio("Impact_Speedclick.mp3");
+// 🔊 Son de clic
+const clickSound = new Audio('Impact_Speedclick.mp3');
 
-socket.emit("setPseudo", pseudo);
-
-socket.on("lobbyUpdate", ({ players: updatedPlayers, hostId }) => {
-  players = updatedPlayers;
-  playersList.innerHTML = "<h3>Joueurs connectés :</h3>" +
-    players.map(p => `<div>${p.pseudo}</div>`).join("");
-  if (socket.id === hostId) startBtn.style.display = "inline-block";
-  lobby.style.display = "block";
-});
-
-startBtn.onclick = () => {
-  socket.emit("startGame");
-  lobby.style.display = "none";
-  canvas.style.display = "block";
-};
-
-socket.on("startRound", shape => {
-  currentShape = shape;
-  timerDiv.style.display = "block";
-});
-
-socket.on("updateLeaderboard", leaderboard => {
-  leaderboardDiv.style.display = "block";
-  leaderboardDiv.innerHTML = `<h3>Classement</h3>` +
-    leaderboard.map((p, i) => `<div>${i + 1}. ${p.pseudo} - ${p.score} pts</div>`).join("");
-});
-
-socket.on("clickAccepted", () => {
-  clickSound.currentTime = 0;
-  clickSound.play();
-  clickEffects.push({ x: lastMouseX, y: lastMouseY, radius: 10, alpha: 1 });
-});
-
+// 🎮 Suivi position souris
 canvas.addEventListener("mousemove", e => {
   const rect = canvas.getBoundingClientRect();
   lastMouseX = e.clientX - rect.left;
@@ -62,6 +23,7 @@ canvas.addEventListener("mousemove", e => {
   socket.emit("mouseMove", { x: lastMouseX, y: lastMouseY });
 });
 
+// 🎯 Clic dans la forme (on envoie au serveur)
 canvas.addEventListener("click", e => {
   if (!currentShape) return;
   const rect = canvas.getBoundingClientRect();
@@ -69,37 +31,55 @@ canvas.addEventListener("click", e => {
   const y = e.clientY - rect.top;
   const dx = x - currentShape.x;
   const dy = y - currentShape.y;
-  const inShape = dx * dx + dy * dy <= currentShape.size * currentShape.size;
+  const distanceSquared = dx * dx + dy * dy;
+
+  const inShape = distanceSquared <= currentShape.size * currentShape.size;
   if (inShape) {
     socket.emit("playerClick");
   }
 });
 
-function drawEverything() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+// ✅ Réception serveur : clic accepté
+socket.on("clickAccepted", () => {
+  clickSound.currentTime = 0;
+  clickSound.play();
+  clickEffects.push({ x: lastMouseX, y: lastMouseY, radius: 10, alpha: 1 });
+});
 
-  if (currentShape) {
-    ctx.beginPath();
-    ctx.fillStyle = currentShape.color;
-    ctx.arc(currentShape.x, currentShape.y, currentShape.size, 0, Math.PI * 2);
-    ctx.fill();
-  }
+// 🖼️ Mise à jour de la forme à afficher
+socket.on("newShape", shape => {
+  currentShape = shape;
+});
 
-  // Dessiner les effets de clic
-  clickEffects.forEach((fx, index) => {
-    ctx.beginPath();
-    ctx.strokeStyle = `rgba(0, 0, 0, ${fx.alpha})`;
-    ctx.arc(fx.x, fx.y, fx.radius, 0, Math.PI * 2);
-    ctx.stroke();
-    fx.radius += 2;
-    fx.alpha -= 0.05;
-    if (fx.alpha <= 0) clickEffects.splice(index, 1);
-  });
+// ⏱️ Affichage du temps
+socket.on("updateTimer", timeLeft => {
+  document.getElementById("timer").innerText = `Temps restant : ${timeLeft}s`;
+});
 
+// 🧑‍🤝‍🧑 Mise à jour des pointeurs des joueurs
+socket.on("playersUpdate", updatedPlayers => {
+  players = updatedPlayers;
+});
+
+// 🏆 Classement
+socket.on("updateLeaderboard", scores => {
+  const board = scores.map((s, i) => `<div>${i + 1}. ${s.pseudo} (${s.score})</div>`).join("");
+  document.getElementById("leaderboard").innerHTML = `<h3>Classement :</h3>${board}`;
+});
+
+// 🟢 Afficher le canvas une fois que le jeu commence
+socket.on("startGame", () => {
+  document.getElementById("lobby").style.display = "none";
+  canvas.style.display = "block";
+  document.getElementById("timer").style.display = "block";
+  document.getElementById("leaderboard").style.display = "block";
   requestAnimationFrame(drawEverything);
-}
+});
 
-drawEverything();
+// 📤 Chat
+const chatForm = document.getElementById("chatForm");
+const chatInput = document.getElementById("chatInput");
+const chatDiv = document.getElementById("chat");
 
 chatForm.addEventListener("submit", e => {
   e.preventDefault();
@@ -109,7 +89,60 @@ chatForm.addEventListener("submit", e => {
   }
 });
 
-socket.on("chatMessage", ({ pseudo, msg }) => {
-  chatDiv.innerHTML += `<div><b>${pseudo}</b>: ${msg}</div>`;
+socket.on("chatMessage", ({ pseudo, message }) => {
+  chatDiv.innerHTML += `<div><b>${pseudo}</b> : ${message}</div>`;
   chatDiv.scrollTop = chatDiv.scrollHeight;
 });
+
+// 🧑‍🤝‍🧑 Affichage du lobby
+socket.on("lobbyUpdate", ({ players, hostId }) => {
+  const list = players.map(p => `<div>${p.pseudo}</div>`).join("");
+  document.getElementById("playersList").innerHTML = `<h3>Joueurs connectés :</h3>${list}`;
+  if (socket.id === hostId) {
+    document.getElementById("startBtn").style.display = "inline-block";
+  }
+  document.getElementById("lobby").style.display = "block";
+});
+
+// ▶️ Bouton de démarrage
+document.getElementById("startBtn").onclick = () => {
+  socket.emit("startGame");
+};
+
+// 🎨 Fonction de rendu (canvas)
+function drawEverything() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Dessiner la forme
+  if (currentShape) {
+    ctx.beginPath();
+    ctx.fillStyle = currentShape.color;
+    ctx.arc(currentShape.x, currentShape.y, currentShape.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Dessiner les pointeurs des autres joueurs
+  players.forEach(p => {
+    if (p.id !== socket.id) {
+      ctx.beginPath();
+      ctx.fillStyle = "black";
+      ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = "12px sans-serif";
+      ctx.fillText(p.pseudo, p.x + 8, p.y);
+    }
+  });
+
+  // 💥 Effets de clic
+  clickEffects.forEach((fx, index) => {
+    ctx.beginPath();
+    ctx.strokeStyle = `rgba(0,0,0,${fx.alpha})`;
+    ctx.arc(fx.x, fx.y, fx.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    fx.radius += 2;
+    fx.alpha -= 0.05;
+    if (fx.alpha <= 0) clickEffects.splice(index, 1);
+  });
+
+  requestAnimationFrame(drawEverything);
+}
