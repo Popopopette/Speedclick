@@ -57,40 +57,37 @@ function calculateBattlePoints(order) {
 
 function startRound() {
   roundIndex++;
-if (gameMode === 'classic' && roundIndex >= MAX_ROUNDS) return endGame();
+  if (gameMode === 'classic' && roundIndex >= MAX_ROUNDS) return endGame();
   clickData = [];
   currentShape = randomShape(`round-${roundIndex}`);
   io.emit('newShape', { shape: currentShape, round: roundIndex + 1 });
 
   setTimeout(() => {
-    // Ajouter les joueurs qui n'ont pas cliqué avec un timestamp fictif
-const nonClickers = players
-  .filter(p => !clickData.some(c => c.id === p.id) && p.score > 0)
-  .map(p => ({ id: p.id, timestamp: Infinity }));
+    const nonClickers = players
+      .filter(p => !clickData.some(c => c.id === p.id) && p.score > 0)
+      .map(p => ({ id: p.id, timestamp: Infinity }));
 
-clickData.push(...nonClickers);
+    clickData.push(...nonClickers);
+    clickData.sort((a, b) => a.timestamp - b.timestamp);
 
-clickData.sort((a, b) => a.timestamp - b.timestamp);
+    clickData.forEach((entry, index) => {
+      const player = players.find(p => p.id === entry.id);
+      if (player && player.score > 0) {
+        let points = gameMode === 'battle'
+          ? calculateBattlePoints(index)
+          : calculatePoints(index, currentShape);
 
-clickData.forEach((entry, index) => {
-  const player = players.find(p => p.id === entry.id);
-  if (player && player.score > 0) {
-    let points = gameMode === 'battle'
-      ? calculateBattlePoints(index)
-      : calculatePoints(index, currentShape);
+        if (gameMode === 'battle' && currentShape.color === 'red') {
+          points *= 2;
+        }
 
-    if (gameMode === 'battle' && currentShape.color === 'red') {
-      points *= 2;
-    }
+        player.score += points;
 
-    player.score += points;
-
-    if (gameMode === 'battle' && player.score <= 0) {
-      io.to(player.id).emit('eliminated');
-    }
-  }
-});
-
+        if (gameMode === 'battle' && player.score <= 0) {
+          io.to(player.id).emit('eliminated');
+        }
+      }
+    });
 
     if (gameMode === 'battle') {
       const remaining = players.filter(p => p.score > 0);
