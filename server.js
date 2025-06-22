@@ -1,113 +1,124 @@
-const express = require("express");
-const http = require("http");
-const socketio = require("socket.io");
-const path = require("path");
+const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketio(server);
-
+const io = socketIo(server);
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => console.log("Speedclick ready", PORT));
-app.use(express.static(path.join(__dirname, "public")));
 
-const shapes = ["circle", "square", "diamond"];
-const colors = ["blue", "green", "red", "yellow"];
+app.use(express.static('public'));
 
 let players = [];
 let hostId = null;
+let roundIndex = -1;
+const MAX_ROUNDS = 20;
+const ROUND_TIME = 7000;
 let currentShape = null;
 let clickData = [];
 
-io.on("connection", socket => {
-  console.log("New connection:", socket.id);
+const icons = ['👊', '🗡️', '🧤', '⚔️', '🎯', '🪄'];
 
-  socket.on("registerPlayer", ({ pseudo, emoji }) => {
-    players.push({
-      id: socket.id,
-      pseudo,
-      emoji,
-      score: 0,
-      x: 0,
-      y: 0
+function randomShape(id) {
+  const types = ['circle', 'square', 'diamond'];
+  const colors = ['blue', 'red', 'green', 'yellow'];
+  const size = Math.floor(Math.random() * 40) + 10;
+  return {
+    id,
+    type: types[Math.floor(Math.random() * types.length)],
+    color: colors[Math.floor(Math.random() * colors.length)],
+    size,
+    x: Math.floor(Math.random() * (800 - size)),
+    y: Math.floor(Math.random() * (600 - size))
+  };
+}
+
+function calculatePoints(order, shape) {
+  let points = 0;
+  if (order === 0) points = 5;
+  else if (order === 1) points = 4;
+  else if (order === 2) points = 3;
+  else if (order === 3) points = 2;
+  else if (order === 4) points = 1;
+  else points = 0;
+  if (shape.color === 'red') points = -points;
+  return points;
+}
+
+function startRound() {
+  roundIndex++;
+  if (roundIndex >= MAX_ROUNDS) return endGame();
+  clickData = [];
+  currentShape = randomShape(`round-${roundIndex}`);
+  io.emit('newShape', { shape: currentShape, round: roundIndex + 1 });
+
+  setTimeout(() => {
+    clickData.sort((a, b) => a.timestamp - b.timestamp);
+    clickData.forEach((entry, index) => {
+      const player = players.find(p => p.id === entry.id);
+      if (player) {
+        player.score += calculatePoints(index, currentShape);
+      }
     });
+    io.emit('scoreUpdate', players);
+    startRound();
+  }, ROUND_TIME);
+}
+
+function endGame() {
+  io.emit('gameEnded', players);
+  roundIndex = -1;
+  currentShape = null;
+  clickData = [];
+  players.forEach(p => (p.score = 0));
+}
+
+io.on('connection', socket => {
+  socket.on('setPseudo', pseudo => {
+    const icon = icons[Math.floor(Math.random() * icons.length)];
+    players.push({ id: socket.id, pseudo, icon, score: 0, x: 0, y: 0 });
     if (!hostId) hostId = socket.id;
-    emitLobby();
+    io.emit('lobbyUpdate', { players, hostId });
   });
 
-  socket.on("mouseMove", pos => {
-    const p = players.find(p => p.id === socket.id);
-    if (p) {
-      p.x = pos.x;
-      p.y = pos.y;
+  socket.on('startGame', () => {
+    if (socket.id === hostId) startRound();
+  });
+
+  socket.on('playerClick', () => {
+    if (roundIndex >= 0 && !clickData.some(c => c.id === socket.id)) {
+      clickData.push({ id: socket.id, timestamp: Date.now() });
     }
   });
 
-  socket.on("chatMessage", message => {
-    const p = players.find(p => p.id === socket.id);
-    if (p) io.emit("chatMessage", { pseudo: p.pseudo, message });
-  });
-
-  socket.on("playerClick", () => {
-    if (!clickData.find(c => c.id === socket.id)) {
-      clickData.push({ id: socket.id, t: Date.now() });
-      socket.emit("clickAccepted");
+  socket.on('mouseMove', ({ x, y }) => {
+    const player = players.find(p => p.id === socket.id);
+    if (player) {
+      player.x = x;
+      player.y = y;
     }
+    io.emit('pointerUpdate', players.map(p => ({
+      id: p.id,
+      x: p.x,
+      y: p.y,
+      icon: p.icon,
+      pseudo: p.pseudo
+    })));
   });
 
-  socket.on("startGame", () => {
-    if (socket.id === hostId) startGame();
+  socket.on('chatMessage', message => {
+    const sender = players.find(p => p.id === socket.id);
+    const pseudo = sender ? sender.pseudo : 'Anonyme';
+    io.emit('chatMessage', { pseudo, message });
   });
 
-  socket.on("disconnect", () => {
+  socket.on('disconnect', () => {
     players = players.filter(p => p.id !== socket.id);
-    if (socket.id === hostId) hostId = players[0]?.id || null;
-    emitLobby();
+    if (socket.id === hostId) {
+      hostId = players.length > 0 ? players[0].id : null;
+    }
+    io.emit('lobbyUpdate', { players, hostId });
   });
 });
 
-function emitLobby() {
-  io.emit("lobbyUpdate", { players, hostId });
-}
-
-function startGame() {
-  let round = 0;
-  const maxRounds = 20;
-
-  const nextRound = () => {
-    if (round >= maxRounds) return;
-    round++;
-    clickData = [];
-    currentShape = {
-      x: Math.random() * 700 + 50,
-      y: Math.random() * 500 + 50,
-      size: Math.floor(Math.random() * 20) + 10,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      shape: shapes[Math.floor(Math.random() * shapes.length)]
-    };
-    io.emit("newShape", currentShape);
-
-    setTimeout(() => {
-      assignPoints();
-      io.emit("playersUpdate", players);
-      io.emit("updateLeaderboard", players.slice().sort((a, b) => b.score - a.score));
-      setTimeout(nextRound, 1000);
-    }, 3000);
-  };
-
-  io.emit("startGame");
-  nextRound();
-}
-
-function assignPoints() {
-  clickData.sort((a, b) => a.t - b.t);
-  clickData.forEach((click, index) => {
-    const p = players.find(p => p.id === click.id);
-    if (!p) return;
-    let pts = Math.max(5 - index, 0);
-    if (currentShape.color === "blue") pts += 2;
-    if (currentShape.color === "red") pts = -pts;
-    if (currentShape.size < 20) pts += 1;
-    p.score += pts;
-  });
-}
+server.listen(PORT, () => console.log(`Server on port ${PORT}`));
