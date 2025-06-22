@@ -1,132 +1,115 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <title>Speedclick</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      margin: 0;
-      background-color: #fff;
-    }
+// script.js
 
-    /* 🔁 Logo 2x plus grand */
-    #logo {
-      width: 180px;
-      margin: 10px;
-      display: inline-block;
-      position: absolute;
-      top: 0;
-      left: 0;
-      z-index: 10;
-    }
+const socket = io();
 
-    /* 🧱 Conteneur principal à 3 colonnes */
-    #main {
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      margin-top: 60px;
-      gap: 20px;
-    }
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+const chatForm = document.getElementById("chatForm");
+const chatInput = document.getElementById("chatInput");
+const chatDiv = document.getElementById("chat");
+const lobby = document.getElementById("lobby");
+const startBtn = document.getElementById("startBtn");
+const playersList = document.getElementById("playersList");
+const timerDiv = document.getElementById("timer");
+const leaderboardDiv = document.getElementById("leaderboard");
 
-    /* 🎮 Canvas du jeu */
-    canvas {
-      border: 1px solid #000;
-      display: block;
-    }
+let pseudo = prompt("Entrez votre pseudo :") || "Anonyme";
+let players = [];
+let currentShape = null;
+let clickEffects = [];
+let lastMouseX = 0;
+let lastMouseY = 0;
 
-    /* 🏆 Score / Timer à gauche */
-    #sidePanel {
-      width: 200px;
-      height: 600px;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      align-items: center;
-      text-align: center;
-    }
+const clickSound = new Audio("Impact_Speedclick.mp3");
 
-    #timer, #leaderboard {
-      width: 100%;
-      margin-top: 10px;
-    }
+socket.emit("setPseudo", pseudo);
 
-    /* 💬 Chat vertical à droite */
-    #chatPanel {
-      width: 200px;
-      height: 600px;
-      display: flex;
-      flex-direction: column;
-    }
+socket.on("lobbyUpdate", ({ players: updatedPlayers, hostId }) => {
+  players = updatedPlayers;
+  playersList.innerHTML = "<h3>Joueurs connectés :</h3>" +
+    players.map(p => `<div>${p.pseudo}</div>`).join("");
+  if (socket.id === hostId) startBtn.style.display = "inline-block";
+  lobby.style.display = "block";
+});
 
-    #chat {
-      flex: 1;
-      overflow-y: auto;
-      border: 1px solid #ccc;
-      background: #f5f5f5;
-      text-align: left;
-      padding: 10px;
-      font-size: 14px;
-    }
+startBtn.onclick = () => {
+  socket.emit("startGame");
+  lobby.style.display = "none";
+  canvas.style.display = "block";
+};
 
-    #chatForm {
-      display: flex;
-      gap: 5px;
-      padding: 10px 0;
-    }
+socket.on("startRound", shape => {
+  currentShape = shape;
+  timerDiv.style.display = "block";
+});
 
-    #chatInput {
-      flex: 1;
-    }
+socket.on("updateLeaderboard", leaderboard => {
+  leaderboardDiv.style.display = "block";
+  leaderboardDiv.innerHTML = `<h3>Classement</h3>` +
+    leaderboard.map((p, i) => `<div>${i + 1}. ${p.pseudo} - ${p.score} pts</div>`).join("");
+});
 
-    /* 🎮 Lobby d’attente */
-    #lobby {
-      padding: 20px;
-      text-align: center;
-    }
+socket.on("clickAccepted", () => {
+  clickSound.currentTime = 0;
+  clickSound.play();
+  clickEffects.push({ x: lastMouseX, y: lastMouseY, radius: 10, alpha: 1 });
+});
 
-    button {
-      padding: 6px 12px;
-      font-size: 14px;
-    }
-  </style>
-</head>
-<body>
+canvas.addEventListener("mousemove", e => {
+  const rect = canvas.getBoundingClientRect();
+  lastMouseX = e.clientX - rect.left;
+  lastMouseY = e.clientY - rect.top;
+  socket.emit("mouseMove", { x: lastMouseX, y: lastMouseY });
+});
 
-  <!-- 🔥 Logo visible en haut à gauche -->
-  <img src="speedclick.png" alt="Speedclick logo" id="logo" />
+canvas.addEventListener("click", e => {
+  if (!currentShape) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  const dx = x - currentShape.x;
+  const dy = y - currentShape.y;
+  const inShape = dx * dx + dy * dy <= currentShape.size * currentShape.size;
+  if (inShape) {
+    socket.emit("playerClick");
+  }
+});
 
-  <!-- 🧱 Bloc principal -->
-  <div id="main">
-    <!-- 🏆 Score & timer à gauche -->
-    <div id="sidePanel">
-      <div id="timer" style="display:none"></div>
-      <div id="leaderboard" style="display:none"></div>
-    </div>
+function drawEverything() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    <!-- 🎮 Canvas du jeu -->
-    <canvas id="gameCanvas" width="800" height="600" style="display:none"></canvas>
+  if (currentShape) {
+    ctx.beginPath();
+    ctx.fillStyle = currentShape.color;
+    ctx.arc(currentShape.x, currentShape.y, currentShape.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
-    <!-- 💬 Chat -->
-    <div id="chatPanel">
-      <div id="chat"></div>
-      <form id="chatForm">
-        <input id="chatInput" autocomplete="off" placeholder="Message...">
-        <button>Envoyer</button>
-      </form>
-    </div>
-  </div>
+  // Dessiner les effets de clic
+  clickEffects.forEach((fx, index) => {
+    ctx.beginPath();
+    ctx.strokeStyle = `rgba(0, 0, 0, ${fx.alpha})`;
+    ctx.arc(fx.x, fx.y, fx.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    fx.radius += 2;
+    fx.alpha -= 0.05;
+    if (fx.alpha <= 0) clickEffects.splice(index, 1);
+  });
 
-  <!-- 👥 Lobby d’attente -->
-  <div id="lobby">
-    <h2>En attente d'autres joueurs...</h2>
-    <button id="startBtn" style="display:none">Démarrer la partie</button>
-    <div id="playersList"></div>
-  </div>
+  requestAnimationFrame(drawEverything);
+}
 
-  <!-- 📦 Scripts -->
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="script.js" defer></script>
-</body>
-</html>
+drawEverything();
+
+chatForm.addEventListener("submit", e => {
+  e.preventDefault();
+  if (chatInput.value) {
+    socket.emit("chatMessage", chatInput.value);
+    chatInput.value = "";
+  }
+});
+
+socket.on("chatMessage", ({ pseudo, msg }) => {
+  chatDiv.innerHTML += `<div><b>${pseudo}</b>: ${msg}</div>`;
+  chatDiv.scrollTop = chatDiv.scrollHeight;
+});
