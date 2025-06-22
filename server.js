@@ -82,8 +82,14 @@ io.on('connection', socket => {
   });
 
   socket.on('startGame', () => {
-    if (socket.id === hostId) startRound();
-  });
+  if (socket.id === hostId) {
+    io.emit('countdown'); // tous les clients reçoivent le signal "3,2,1..."
+    setTimeout(() => {
+      startRound(); // le vrai jeu commence après 4 secondes
+    }, 4000); // 3 sec de chiffres + 1 pour "GO"
+  }
+});
+
 
   socket.on('playerClick', () => {
     if (roundIndex >= 0 && !clickData.some(c => c.id === socket.id)) {
