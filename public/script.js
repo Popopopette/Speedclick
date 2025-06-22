@@ -1,7 +1,7 @@
 const socket = io();
-let pseudo = prompt("Entrez votre pseudo :") || "Anonyme";
-socket.emit('setPseudo', pseudo);
 
+let pseudo = "";
+let icon = "";
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const lobby = document.getElementById('lobby');
@@ -12,10 +12,20 @@ const leaderboard = document.getElementById('leaderboard');
 const chatDiv = document.getElementById('chat');
 const chatForm = document.getElementById('chatForm');
 const chatInput = document.getElementById('chatInput');
+const iconSelect = document.getElementById('iconSelect');
+const iconChoice = document.getElementById('iconChoice');
+const enterGame = document.getElementById('enterGame');
 
 let currentShape = null;
+let pointers = [];
 
-// LOBBY
+enterGame.onclick = () => {
+  pseudo = prompt("Entrez votre pseudo :") || "Anonyme";
+  icon = iconChoice.value;
+  socket.emit('setPseudoAndIcon', { pseudo, icon });
+  iconSelect.style.display = 'none';
+};
+
 socket.on('lobbyUpdate', ({ players, hostId }) => {
   playersList.innerHTML = '<h3>Joueurs connectés :</h3>' + players.map(p => `<div>${p.pseudo}</div>`).join('');
   if (socket.id === hostId) startBtn.style.display = 'inline-block';
@@ -23,7 +33,6 @@ socket.on('lobbyUpdate', ({ players, hostId }) => {
 
 startBtn.onclick = () => socket.emit('startGame');
 
-// NOUVELLE FORME
 socket.on('newShape', ({ shape, round }) => {
   lobby.style.display = 'none';
   canvas.style.display = 'block';
@@ -31,7 +40,7 @@ socket.on('newShape', ({ shape, round }) => {
   leaderboard.style.display = 'block';
 
   currentShape = shape;
-  drawShape(shape);
+  drawEverything();
   timer.innerText = `Forme ${round}/20`;
 
   setTimeout(() => {
@@ -39,19 +48,16 @@ socket.on('newShape', ({ shape, round }) => {
   }, 7000);
 });
 
-// SCORES
 socket.on('scoreUpdate', players => {
   leaderboard.innerHTML = '<h3>Classement</h3>' +
     players.sort((a,b) => b.score - a.score).map(p => `<div>${p.pseudo} : ${p.score}</div>`).join('');
 });
 
-// FIN
 socket.on('gameEnded', players => {
   alert("🎉 Partie terminée !");
   leaderboard.innerHTML += '<h4>Fin de partie</h4>';
 });
 
-// CLIC SUR FORME
 canvas.addEventListener('click', e => {
   if (!currentShape) return;
   const rect = canvas.getBoundingClientRect();
@@ -61,20 +67,37 @@ canvas.addEventListener('click', e => {
   if (inShape) socket.emit('playerClick');
 });
 
-// DESSIN
-function drawShape(shape) {
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left, y = e.clientY - rect.top;
+  socket.emit('mouseMove', { x, y });
+});
+
+function drawEverything() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = shape.color;
-  if (shape.type === 'circle') {
-    ctx.beginPath();
-    ctx.arc(shape.x, shape.y, shape.size, 0, Math.PI * 2);
-    ctx.fill();
-  } else {
-    ctx.fillRect(shape.x, shape.y, shape.size, shape.size);
+  if (currentShape) {
+    ctx.fillStyle = currentShape.color;
+    if (currentShape.type === 'circle') {
+      ctx.beginPath();
+      ctx.arc(currentShape.x, currentShape.y, currentShape.size, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillRect(currentShape.x, currentShape.y, currentShape.size, currentShape.size);
+    }
   }
+
+  pointers.forEach(p => {
+    ctx.font = "20px Arial";
+    ctx.fillText(p.icon, p.x, p.y);
+  });
+
+  requestAnimationFrame(drawEverything);
 }
 
-// CHAT
+socket.on('pointerUpdate', data => {
+  pointers = data.filter(p => p.id !== socket.id);
+});
+
 chatForm.addEventListener('submit', e => {
   e.preventDefault();
   const msg = chatInput.value.trim();
