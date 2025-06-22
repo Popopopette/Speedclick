@@ -72,7 +72,7 @@ socket.on('newShape', ({ shape, round }) => {
 
   currentShape = shape;
   drawEverything();
-  timer.innerText = `Forme ${round}/20`;
+  timer.innerText = `Forme ${round}`;
 
   setTimeout(() => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -111,12 +111,30 @@ canvas.addEventListener('mousemove', e => {
   socket.emit('mouseMove', { x, y });
 });
 
-socket.on('chatMessage', ({ pseudo, message }) => {
-  const line = document.createElement('div');
-  line.innerHTML = `<b>${pseudo}</b> : ${message}`;
-  chatDiv.appendChild(line);
-  chatDiv.scrollTop = chatDiv.scrollHeight;
+socket.on('pointerUpdate', data => {
+  pointers = data.filter(p => p.id !== socket.id);
 });
+
+function drawEverything() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (currentShape) {
+    ctx.fillStyle = currentShape.color;
+    if (currentShape.type === 'circle') {
+      ctx.beginPath();
+      ctx.arc(currentShape.x, currentShape.y, currentShape.size, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillRect(currentShape.x, currentShape.y, currentShape.size, currentShape.size);
+    }
+  }
+
+  pointers.forEach(p => {
+    ctx.font = "20px Arial";
+    ctx.fillText(p.icon, p.x, p.y);
+  });
+
+  requestAnimationFrame(drawEverything);
+}
 
 chatForm.addEventListener('submit', e => {
   e.preventDefault();
@@ -124,4 +142,11 @@ chatForm.addEventListener('submit', e => {
   if (!msg) return;
   socket.emit('chatMessage', msg);
   chatInput.value = '';
+});
+
+socket.on('chatMessage', ({ pseudo, message }) => {
+  const line = document.createElement('div');
+  line.innerHTML = `<b>${pseudo}</b> : ${message}`;
+  chatDiv.appendChild(line);
+  chatDiv.scrollTop = chatDiv.scrollHeight;
 });
