@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -41,6 +43,7 @@
 
     canvas {
       border: 1px solid #000;
+      display: none;
       margin-bottom: 20px;
     }
 
@@ -72,18 +75,9 @@
       text-align: center;
     }
 
-    #lobbyCanvas {
-      display: block;
-      margin: 20px auto;
-    }
-
     #timer {
       margin-top: 10px;
       font-weight: bold;
-    }
-
-    video#fightVideo {
-      display: none;
     }
   </style>
 </head>
@@ -95,14 +89,13 @@
     <h2>En attente d'autres joueurs...</h2>
     <button id="startBtn" style="display:none">Démarrer la partie</button>
     <div id="playersList"></div>
-    <canvas id="lobbyCanvas" width="800" height="600"></canvas>
   </div>
 
   <div id="mainContainer">
     <div id="leaderboard"></div>
 
     <div id="centerColumn">
-      <canvas id="gameCanvas" width="800" height="600" style="display:none"></canvas>
+      <canvas id="gameCanvas" width="800" height="600"></canvas>
       <div id="timer"></div>
     </div>
 
@@ -114,8 +107,6 @@
       </form>
     </div>
   </div>
-
-  <video id="fightVideo" src="fight_speedclick.mp4" muted loop></video>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js" defer></script>
