@@ -14,6 +14,10 @@ server.listen(PORT, '0.0.0.0', () => {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+const shapeTypes = ["circle", "square", "diamond"];
+const colors = ["blue", "green", "red", "yellow"];
+const emojiOptions = ["🧤", "🗡️", "🖐️", "⚡", "🔥"];
+
 let players = [];
 let hostId = null;
 let currentShape = null;
@@ -22,7 +26,8 @@ let clickData = [];
 
 io.on('connection', socket => {
   console.log('User connected:', socket.id);
-  players.push({ id: socket.id, pseudo: "Anonyme", score: 0, x: 0, y: 0 });
+  const emoji = emojiOptions[Math.floor(Math.random() * emojiOptions.length)];
+  players.push({ id: socket.id, pseudo: "Anonyme", score: 0, x: 0, y: 0, emoji });
 
   if (!hostId) hostId = socket.id;
   updateLobby();
@@ -77,21 +82,17 @@ function startGame() {
     const shape = {
       x: Math.random() * 700 + 50,
       y: Math.random() * 500 + 50,
-      size: Math.floor(Math.random() * 30) + 20,
-      color: ["blue", "green", "red", "yellow"][Math.floor(Math.random() * 4)]
+      size: Math.floor(Math.random() * 20) + 10,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      shape: shapeTypes[Math.floor(Math.random() * shapeTypes.length)]
     };
     currentShape = shape;
     io.emit("newShape", shape);
 
-    let time = 3;
-    const interval = setInterval(() => {
-      io.emit("updateTimer", time);
-      if (--time < 0) {
-        clearInterval(interval);
-        calculatePoints();
-        setTimeout(nextRound, 1000);
-      }
-    }, 1000);
+    setTimeout(() => {
+      calculatePoints();
+      setTimeout(nextRound, 1000);
+    }, 3000);
   };
 
   io.emit("startGame");
@@ -106,7 +107,7 @@ function calculatePoints() {
     let bonus = Math.max(5 - index, 0);
     if (currentShape.color === "blue") bonus += 2;
     if (currentShape.color === "red") bonus = -bonus;
-    if (currentShape.size < 30) bonus += 1;
+    if (currentShape.size < 20) bonus += 1;
     player.score += bonus;
   });
   io.emit("updateLeaderboard", players.sort((a, b) => b.score - a.score));
