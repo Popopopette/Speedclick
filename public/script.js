@@ -30,8 +30,10 @@ socket.on('lobbyUpdate', ({ players, hostId }) => {
 });
 
 startBtn.onclick = () => {
-  const mode = gameModeSelect.value;
+  const mode = document.getElementById('gameModeSelect').value || 'classic';
   socket.emit('startGame', mode);
+};
+
 };
 
 socket.on('countdown', () => {
