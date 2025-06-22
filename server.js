@@ -17,6 +17,8 @@ const ROUND_TIME = 7000;
 let currentShape = null;
 let clickData = [];
 
+const icons = ['👊', '🗡️', '🧤', '⚔️', '🎯', '🪄'];
+
 function randomShape(id) {
   const types = ['circle', 'square', 'diamond'];
   const colors = ['blue', 'red', 'green', 'yellow'];
@@ -39,18 +41,13 @@ function calculatePoints(order, shape) {
   else if (order === 3) points = 2;
   else if (order === 4) points = 1;
   else points = 0;
-
-  if (shape.color === 'red') {
-    points = -points;
-  }
-
+  if (shape.color === 'red') points = -points;
   return points;
 }
 
 function startRound() {
   roundIndex++;
   if (roundIndex >= MAX_ROUNDS) return endGame();
-
   clickData = [];
   currentShape = randomShape(`round-${roundIndex}`);
   io.emit('newShape', { shape: currentShape, round: roundIndex + 1 });
@@ -59,9 +56,10 @@ function startRound() {
     clickData.sort((a, b) => a.timestamp - b.timestamp);
     clickData.forEach((entry, index) => {
       const player = players.find(p => p.id === entry.id);
-      if (player) player.score += calculatePoints(index, currentShape);
+      if (player) {
+        player.score += calculatePoints(index, currentShape);
+      }
     });
-
     io.emit('scoreUpdate', players);
     startRound();
   }, ROUND_TIME);
@@ -76,7 +74,8 @@ function endGame() {
 }
 
 io.on('connection', socket => {
-  socket.on('setPseudoAndIcon', ({ pseudo, icon }) => {
+  socket.on('setPseudo', pseudo => {
+    const icon = icons[Math.floor(Math.random() * icons.length)];
     players.push({ id: socket.id, pseudo, icon, score: 0, x: 0, y: 0 });
     if (!hostId) hostId = socket.id;
     io.emit('lobbyUpdate', { players, hostId });
