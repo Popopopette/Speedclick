@@ -6,34 +6,34 @@
   <style>
     body {
       font-family: sans-serif;
-      text-align: center;
       margin: 0;
       background-color: #fff;
     }
 
-  #logo {
-  width: 150px;
-  margin: 10px;
-  display: inline-block;
-  position: absolute;
-  top: 0;
-  left: 0;
-}
-
+    #logo {
+      width: 150px;
+      margin: 10px;
+      display: inline-block;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 10;
     }
 
     canvas {
       border: 1px solid #000;
       display: block;
-      margin: 20px auto;
+      margin: 60px auto 20px; /* Décale un peu à cause du logo */
     }
 
     #leaderboard, #timer, #chat {
       margin-top: 20px;
+      text-align: center;
     }
 
     #lobby {
       padding: 20px;
+      text-align: center;
     }
 
     #chat {
@@ -51,35 +51,46 @@
       display: flex;
       justify-content: center;
       gap: 5px;
+      margin-bottom: 20px;
     }
 
     #chatInput {
       width: 300px;
     }
+
+    button {
+      padding: 6px 12px;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
 
-  <!-- 🔥 Ton logo s'affiche ici -->
+  <!-- ✅ Logo en haut à gauche -->
   <img src="speedclick.png" alt="Speedclick logo" id="logo" />
 
+  <!-- Canvas du jeu -->
   <canvas id="gameCanvas" width="800" height="600" style="display:none"></canvas>
 
+  <!-- Lobby d'attente -->
   <div id="lobby">
     <h2>En attente d'autres joueurs...</h2>
     <button id="startBtn" style="display:none">Démarrer la partie</button>
     <div id="playersList"></div>
   </div>
 
+  <!-- Timer et scores -->
   <div id="timer" style="display:none"></div>
   <div id="leaderboard" style="display:none"></div>
 
+  <!-- Chat -->
   <div id="chat"></div>
   <form id="chatForm">
     <input id="chatInput" autocomplete="off">
     <button>Envoyer</button>
   </form>
 
+  <!-- Scripts -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js" defer></script>
 </body>
