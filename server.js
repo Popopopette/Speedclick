@@ -12,6 +12,7 @@ app.use(express.static('public'));
 let players = [];
 let hostId = null;
 let roundIndex = -1;
+let gameMode = 'classic';
 const MAX_ROUNDS = 20;
 const ROUND_TIME = 7000;
 let currentShape = null;
@@ -45,9 +46,18 @@ function calculatePoints(order, shape) {
   return points;
 }
 
+function calculateBattlePoints(order) {
+  if (order === 0) return 0;
+  if (order === 1) return -1;
+  if (order === 2) return -2;
+  if (order === 3) return -3;
+  if (order === 4) return -4;
+  return -5;
+}
+
 function startRound() {
   roundIndex++;
-  if (roundIndex >= MAX_ROUNDS) return endGame();
+  if (roundIndex >= MAX_ROUNDS && gameMode === 'classic') return endGame();
   clickData = [];
   currentShape = randomShape(`round-${roundIndex}`);
   io.emit('newShape', { shape: currentShape, round: roundIndex + 1 });
@@ -57,9 +67,22 @@ function startRound() {
     clickData.forEach((entry, index) => {
       const player = players.find(p => p.id === entry.id);
       if (player) {
-        player.score += calculatePoints(index, currentShape);
+        const points = gameMode === 'battle'
+          ? calculateBattlePoints(index)
+          : calculatePoints(index, currentShape);
+        player.score += points;
+
+        if (gameMode === 'battle' && player.score <= 0) {
+          io.to(player.id).emit('eliminated');
+        }
       }
     });
+
+    if (gameMode === 'battle') {
+      const remaining = players.filter(p => p.score > 0);
+      if (remaining.length <= 1) return endGame();
+    }
+
     io.emit('scoreUpdate', players);
     startRound();
   }, ROUND_TIME);
@@ -70,26 +93,26 @@ function endGame() {
   roundIndex = -1;
   currentShape = null;
   clickData = [];
-  players.forEach(p => (p.score = 0));
+  players.forEach(p => p.score = 20);
 }
 
 io.on('connection', socket => {
   socket.on('setPseudo', pseudo => {
     const icon = icons[Math.floor(Math.random() * icons.length)];
-    players.push({ id: socket.id, pseudo, icon, score: 0, x: 0, y: 0 });
+    players.push({ id: socket.id, pseudo, icon, score: 20, x: 0, y: 0 });
     if (!hostId) hostId = socket.id;
     io.emit('lobbyUpdate', { players, hostId });
   });
 
-  socket.on('startGame', () => {
-  if (socket.id === hostId) {
-    io.emit('countdown'); // tous les clients reçoivent le signal "3,2,1..."
-    setTimeout(() => {
-      startRound(); // le vrai jeu commence après 4 secondes
-    }, 4000); // 3 sec de chiffres + 1 pour "GO"
-  }
-});
-
+  socket.on('startGame', mode => {
+    if (socket.id === hostId) {
+      gameMode = mode || 'classic';
+      io.emit('countdown');
+      setTimeout(() => {
+        startRound();
+      }, 4000);
+    }
+  });
 
   socket.on('playerClick', () => {
     if (roundIndex >= 0 && !clickData.some(c => c.id === socket.id)) {
@@ -99,11 +122,11 @@ io.on('connection', socket => {
 
   socket.on('mouseMove', ({ x, y }) => {
     const player = players.find(p => p.id === socket.id);
-    if (player) {
+    if (player && player.score > 0) {
       player.x = x;
       player.y = y;
     }
-    io.emit('pointerUpdate', players.map(p => ({
+    io.emit('pointerUpdate', players.filter(p => p.score > 0).map(p => ({
       id: p.id,
       x: p.x,
       y: p.y,
