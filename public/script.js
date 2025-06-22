@@ -1,9 +1,14 @@
+// ⬇️ Demande de pseudo forcée
+let pseudo = "";
+while (!pseudo) {
+  pseudo = prompt("Entrez votre pseudo :");
+}
+
 const socket = io();
+socket.emit("setPseudo", pseudo);
+
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-
-let pseudo = prompt("Entrez votre pseudo :") || "Anonyme";
-socket.emit("setPseudo", pseudo);
 
 let currentShape = null;
 let players = [];
@@ -12,23 +17,8 @@ let clickEffects = [];
 let lastMouseX = 0;
 let lastMouseY = 0;
 
-// 🔊 Son de clic (placez Impact_Speedclick.mp3 dans /public)
+// 🔊 Son de clic (à placer dans /public)
 const clickSound = new Audio('Impact_Speedclick.mp3');
-
-// 🎯 Détection clic (on vérifie si c'est dans la forme)
-canvas.addEventListener("click", e => {
-  if (!currentShape) return;
-  const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-  const dx = x - currentShape.x;
-  const dy = y - currentShape.y;
-  const inShape = dx * dx + dy * dy <= currentShape.size * currentShape.size;
-
-  if (inShape) {
-    socket.emit("playerClick");
-  }
-});
 
 // 🖱️ Suivi position souris
 canvas.addEventListener("mousemove", e => {
@@ -38,24 +28,38 @@ canvas.addEventListener("mousemove", e => {
   socket.emit("mouseMove", { x: lastMouseX, y: lastMouseY });
 });
 
-// ✅ Clic validé par le serveur → jouer son + animation
+// 🎯 Clic : on détecte s'il est dans la forme et on envoie
+canvas.addEventListener("click", e => {
+  if (!currentShape) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  const dx = x - currentShape.x;
+  const dy = y - currentShape.y;
+  const inShape = dx * dx + dy * dy <= currentShape.size * currentShape.size;
+  if (inShape) {
+    socket.emit("playerClick");
+  }
+});
+
+// ✅ Réception du clic validé → jouer son et effet
 socket.on("clickAccepted", () => {
   clickSound.currentTime = 0;
   clickSound.play();
   clickEffects.push({ x: lastMouseX, y: lastMouseY, radius: 10, alpha: 1 });
 });
 
-// 🧑‍🤝‍🧑 Mise à jour des joueurs et pointeurs
-socket.on("playersUpdate", updatedPlayers => {
-  players = updatedPlayers;
-});
-
-// 🎯 Nouvelle forme à afficher
+// 🔄 Mise à jour de la forme
 socket.on("newShape", shape => {
   currentShape = shape;
 });
 
-// ⏱️ Timer
+// 👥 Mise à jour des joueurs + positions
+socket.on("playersUpdate", updatedPlayers => {
+  players = updatedPlayers;
+});
+
+// ⏱️ Mise à jour du timer
 socket.on("updateTimer", timeLeft => {
   document.getElementById("timer").innerText = `Temps restant : ${timeLeft}s`;
 });
@@ -66,7 +70,7 @@ socket.on("updateLeaderboard", scores => {
   document.getElementById("leaderboard").innerHTML = `<h3>Classement :</h3>${board}`;
 });
 
-// ▶️ Démarrage de la partie
+// ▶️ Lancement du jeu
 socket.on("startGame", () => {
   document.getElementById("lobby").style.display = "none";
   canvas.style.display = "block";
@@ -93,7 +97,7 @@ socket.on("chatMessage", ({ pseudo, message }) => {
   chatDiv.scrollTop = chatDiv.scrollHeight;
 });
 
-// 👥 Lobby
+// 👥 Lobby d'attente
 socket.on("lobbyUpdate", ({ players, hostId }) => {
   const list = players.map(p => `<div>${p.pseudo}</div>`).join("");
   document.getElementById("playersList").innerHTML = `<h3>Joueurs connectés :</h3>${list}`;
@@ -103,15 +107,16 @@ socket.on("lobbyUpdate", ({ players, hostId }) => {
   document.getElementById("lobby").style.display = "block";
 });
 
+// 🚀 Lancement manuel du jeu
 document.getElementById("startBtn").onclick = () => {
   socket.emit("startGame");
 };
 
-// 🎨 Fonction de dessin principale
+// 🖼️ Fonction de rendu principale
 function drawEverything() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Forme active
+  // 🎯 Forme active
   if (currentShape) {
     ctx.beginPath();
     ctx.fillStyle = currentShape.color;
@@ -119,7 +124,7 @@ function drawEverything() {
     ctx.fill();
   }
 
-  // Pointeurs des autres joueurs
+  // 👤 Pointeurs des autres joueurs
   players.forEach(p => {
     if (p.id !== socket.id) {
       ctx.beginPath();
@@ -131,7 +136,7 @@ function drawEverything() {
     }
   });
 
-  // Effets visuels de clic
+  // 💥 Effets visuels de clic
   clickEffects.forEach((fx, i) => {
     ctx.beginPath();
     ctx.strokeStyle = `rgba(0, 0, 0, ${fx.alpha})`;
