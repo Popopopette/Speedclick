@@ -6,7 +6,7 @@
   <style>
     body { font-family: sans-serif; margin: 0; background: #fff; }
     #logo {
-      width: 210px; margin: 10px;
+      width: 150px; margin: 10px;
       position: absolute; top: 0; left: 0;
       z-index: 10;
     }
@@ -21,7 +21,7 @@
     #chat { flex: 1; overflow-y: auto; border: 1px solid #ccc; padding: 10px; background: #f5f5f5; }
     #chatForm { display: flex; gap: 5px; padding: 10px 0; }
     #chatInput { flex: 1; }
-    #timer, #leaderboard { margin-top: 10px; text-align: center; }
+    #leaderboard { margin-top: 10px; text-align: center; }
     #lobby { padding: 20px; text-align: center; }
   </style>
 </head>
@@ -29,7 +29,6 @@
   <img src="speedclick.png" id="logo" alt="Speedclick logo">
   <div id="main">
     <div id="sidePanel">
-      <div id="timer" style="display:none"></div>
       <div id="leaderboard" style="display:none"></div>
     </div>
     <canvas id="gameCanvas" width="800" height="600" style="display:none"></canvas>
