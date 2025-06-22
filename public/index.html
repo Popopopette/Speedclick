@@ -10,6 +10,7 @@
       background-color: #fff;
     }
 
+    /* 🔁 Logo 2x plus grand */
     #logo {
       width: 300px;
       margin: 10px;
@@ -20,6 +21,7 @@
       z-index: 10;
     }
 
+    /* 🧱 Conteneur principal à 3 colonnes */
     #main {
       display: flex;
       justify-content: center;
@@ -28,13 +30,31 @@
       gap: 20px;
     }
 
+    /* 🎮 Canvas du jeu */
     canvas {
       border: 1px solid #000;
       display: block;
     }
 
+    /* 🏆 Score / Timer à gauche */
+    #sidePanel {
+      width: 200px;
+      height: 600px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      text-align: center;
+    }
+
+    #timer, #leaderboard {
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    /* 💬 Chat vertical à droite */
     #chatPanel {
-      width: 400px;
+      width: 200px;
       height: 600px;
       display: flex;
       flex-direction: column;
@@ -60,14 +80,10 @@
       flex: 1;
     }
 
+    /* 🎮 Lobby d’attente */
     #lobby {
       padding: 20px;
       text-align: center;
-    }
-
-    #timer, #leaderboard {
-      text-align: center;
-      margin-top: 20px;
     }
 
     button {
@@ -78,13 +94,21 @@
 </head>
 <body>
 
-  <!-- Logo en haut à gauche -->
+  <!-- 🔥 Logo visible en haut à gauche -->
   <img src="speedclick.png" alt="Speedclick logo" id="logo" />
 
-  <!-- Conteneur principal : canvas + chat -->
+  <!-- 🧱 Bloc principal -->
   <div id="main">
+    <!-- 🏆 Score & timer à gauche -->
+    <div id="sidePanel">
+      <div id="timer" style="display:none"></div>
+      <div id="leaderboard" style="display:none"></div>
+    </div>
+
+    <!-- 🎮 Canvas du jeu -->
     <canvas id="gameCanvas" width="800" height="600" style="display:none"></canvas>
 
+    <!-- 💬 Chat -->
     <div id="chatPanel">
       <div id="chat"></div>
       <form id="chatForm">
@@ -94,18 +118,14 @@
     </div>
   </div>
 
-  <!-- Lobby d'attente -->
+  <!-- 👥 Lobby d’attente -->
   <div id="lobby">
     <h2>En attente d'autres joueurs...</h2>
     <button id="startBtn" style="display:none">Démarrer la partie</button>
     <div id="playersList"></div>
   </div>
 
-  <!-- Timer et scores -->
-  <div id="timer" style="display:none"></div>
-  <div id="leaderboard" style="display:none"></div>
-
-  <!-- Scripts -->
+  <!-- 📦 Scripts -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js" defer></script>
 </body>
