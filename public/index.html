@@ -10,9 +10,9 @@
       background-color: #fff;
     }
 
-    /* 🔁 Logo 2x plus grand */
+    /* ✅ Taille normale du logo */
     #logo {
-      width: 180px;
+      width: 150px;
       margin: 10px;
       display: inline-block;
       position: absolute;
@@ -21,7 +21,6 @@
       z-index: 10;
     }
 
-    /* 🧱 Conteneur principal */
     #main {
       display: flex;
       justify-content: center;
@@ -30,13 +29,11 @@
       gap: 20px;
     }
 
-    /* 🎮 Canvas du jeu */
     canvas {
       border: 1px solid #000;
       display: block;
     }
 
-    /* 🏆 Panneau scores/timer */
     #sidePanel {
       width: 200px;
       height: 600px;
@@ -52,7 +49,6 @@
       margin-top: 10px;
     }
 
-    /* 💬 Chat vertical */
     #chatPanel {
       width: 200px;
       height: 600px;
@@ -80,7 +76,6 @@
       flex: 1;
     }
 
-    /* 👥 Lobby d’attente */
     #lobby {
       padding: 20px;
       text-align: center;
@@ -94,16 +89,32 @@
 </head>
 <body>
 
-  <!-- 🔥 Logo -->
   <img src="speedclick.png" alt="Speedclick logo" id="logo" />
 
-  <!-- 🧱 Contenu principal -->
   <div id="main">
-
-    <!-- 🏆 Scores à gauche -->
     <div id="sidePanel">
       <div id="timer" style="display:none"></div>
       <div id="leaderboard" style="display:none"></div>
     </div>
 
-    <!-- 🎮
+    <canvas id="gameCanvas" width="800" height="600" style="display:none"></canvas>
+
+    <div id="chatPanel">
+      <div id="chat"></div>
+      <form id="chatForm">
+        <input id="chatInput" autocomplete="off" placeholder="Message...">
+        <button>Envoyer</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="lobby">
+    <h2>En attente d'autres joueurs...</h2>
+    <button id="startBtn" style="display:none">Démarrer la partie</button>
+    <div id="playersList"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="script.js" defer></script>
+</body>
+</html>
