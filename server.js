@@ -63,11 +63,12 @@ function startRound() {
   io.emit('newShape', { shape: currentShape, round: roundIndex + 1 });
 
   setTimeout(() => {
-   if (gameMode === 'battle') {
+ if (gameMode === 'battle') {
   const activePlayers = players.filter(p => p.score > 0);
   const nonClickers = activePlayers.filter(p => !clickData.some(c => c.id === p.id))
                                    .map(p => ({ id: p.id, timestamp: Infinity }));
   clickData.push(...nonClickers);
+}
     clickData.sort((a, b) => a.timestamp - b.timestamp);
 
     clickData.forEach((entry, index) => {
