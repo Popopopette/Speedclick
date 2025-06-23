@@ -34,13 +34,22 @@ function randomShape(id) {
 }
 
 function calculateClassicPoints(order, shape) {
-  let points = [5, 4, 3, 2, 1][order] || 0;
-  if (shape.color === 'red') points = -points;
-  return points;
+  if (order === 0) return shape.color === 'red' ? -5 : 5;
+  if (order === 1) return shape.color === 'red' ? -4 : 4;
+  if (order === 2) return shape.color === 'red' ? -3 : 3;
+  if (order === 3) return shape.color === 'red' ? -2 : 2;
+  if (order === 4) return shape.color === 'red' ? -1 : 1;
+  return 0; // Aucun point attribué au-delà du 5e clic
 }
 
 function calculateBattlePoints(order, shape) {
-  let loss = [0, 1, 2, 3, 4][order] || 5;
+  if (order === 0) return 0;  // 1er = aucune perte
+  let loss = 0;
+  if (order === 1) loss = 1;
+  else if (order === 2) loss = 2;
+  else if (order === 3) loss = 3;
+  else loss = 3;
+
   if (shape.color === 'red') loss *= 2;
   return -loss;
 }
