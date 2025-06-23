@@ -12,7 +12,7 @@ app.use(express.static('public'));
 let players = [];
 let hostId = null;
 let roundIndex = -1;
-const MAX_ROUNDS = 20;
+let gameMode = 'classic';
 const ROUND_TIME = 7000;
 let currentShape = null;
 let clickData = [];
@@ -33,33 +33,57 @@ function randomShape(id) {
   };
 }
 
-function calculatePoints(order, shape) {
-  let points = 0;
-  if (order === 0) points = 5;
-  else if (order === 1) points = 4;
-  else if (order === 2) points = 3;
-  else if (order === 3) points = 2;
-  else if (order === 4) points = 1;
-  else points = 0;
+function calculateClassicPoints(order, shape) {
+  let points = [5, 4, 3, 2, 1][order] || 0;
   if (shape.color === 'red') points = -points;
   return points;
 }
 
+function calculateBattlePoints(order, shape) {
+  let loss = [0, 1, 2, 3, 4][order] || 5;
+  if (shape.color === 'red') loss *= 2;
+  return -loss;
+}
+
 function startRound() {
   roundIndex++;
-  if (roundIndex >= MAX_ROUNDS) return endGame();
+  if (gameMode === 'classic' && roundIndex >= 20) return endGame();
+
   clickData = [];
   currentShape = randomShape(`round-${roundIndex}`);
   io.emit('newShape', { shape: currentShape, round: roundIndex + 1 });
 
   setTimeout(() => {
+    const activePlayers = players.filter(p => p.score > 0 || gameMode === 'classic');
+    const nonClickers = activePlayers.filter(p => !clickData.some(c => c.id === p.id))
+                                     .map(p => ({ id: p.id, timestamp: Infinity }));
+
+    clickData.push(...nonClickers);
     clickData.sort((a, b) => a.timestamp - b.timestamp);
+
     clickData.forEach((entry, index) => {
       const player = players.find(p => p.id === entry.id);
-      if (player) {
-        player.score += calculatePoints(index, currentShape);
+      if (!player) return;
+
+      let delta = 0;
+      if (gameMode === 'classic') {
+        delta = calculateClassicPoints(index, currentShape);
+      } else if (gameMode === 'battle') {
+        delta = calculateBattlePoints(index, currentShape);
+      }
+
+      player.score += delta;
+
+      if (gameMode === 'battle' && player.score <= 0) {
+        player.score = 0; // Pas de négatif
       }
     });
+
+    if (gameMode === 'battle') {
+      const survivors = players.filter(p => p.score > 0);
+      if (survivors.length <= 1) return endGame();
+    }
+
     io.emit('scoreUpdate', players);
     startRound();
   }, ROUND_TIME);
@@ -70,26 +94,35 @@ function endGame() {
   roundIndex = -1;
   currentShape = null;
   clickData = [];
-  players.forEach(p => (p.score = 0));
+  players.forEach(p => {
+    p.score = gameMode === 'battle' ? 20 : 0;
+  });
 }
 
 io.on('connection', socket => {
   socket.on('setPseudo', pseudo => {
     const icon = icons[Math.floor(Math.random() * icons.length)];
-    players.push({ id: socket.id, pseudo, icon, score: 0, x: 0, y: 0 });
+    players.push({
+      id: socket.id,
+      pseudo,
+      icon,
+      score: gameMode === 'battle' ? 20 : 0,
+      x: 0,
+      y: 0
+    });
     if (!hostId) hostId = socket.id;
     io.emit('lobbyUpdate', { players, hostId });
   });
 
-  socket.on('startGame', () => {
-  if (socket.id === hostId) {
-    io.emit('countdown'); // tous les clients reçoivent le signal "3,2,1..."
-    setTimeout(() => {
-      startRound(); // le vrai jeu commence après 4 secondes
-    }, 4000); // 3 sec de chiffres + 1 pour "GO"
-  }
-});
-
+  socket.on('startGame', mode => {
+    if (socket.id !== hostId) return;
+    gameMode = mode === 'battle' ? 'battle' : 'classic';
+    players.forEach(p => {
+      p.score = gameMode === 'battle' ? 20 : 0;
+    });
+    io.emit('countdown');
+    setTimeout(() => startRound(), 4000);
+  });
 
   socket.on('playerClick', () => {
     if (roundIndex >= 0 && !clickData.some(c => c.id === socket.id)) {
@@ -99,17 +132,21 @@ io.on('connection', socket => {
 
   socket.on('mouseMove', ({ x, y }) => {
     const player = players.find(p => p.id === socket.id);
-    if (player) {
+    if (player && (gameMode === 'classic' || player.score > 0)) {
       player.x = x;
       player.y = y;
     }
-    io.emit('pointerUpdate', players.map(p => ({
-      id: p.id,
-      x: p.x,
-      y: p.y,
-      icon: p.icon,
-      pseudo: p.pseudo
-    })));
+
+    io.emit('pointerUpdate', players
+      .filter(p => gameMode === 'classic' || p.score > 0)
+      .map(p => ({
+        id: p.id,
+        x: p.x,
+        y: p.y,
+        icon: p.icon,
+        pseudo: p.pseudo
+      }))
+    );
   });
 
   socket.on('chatMessage', message => {
@@ -121,7 +158,7 @@ io.on('connection', socket => {
   socket.on('disconnect', () => {
     players = players.filter(p => p.id !== socket.id);
     if (socket.id === hostId) {
-      hostId = players.length > 0 ? players[0].id : null;
+      hostId = players.length ? players[0].id : null;
     }
     io.emit('lobbyUpdate', { players, hostId });
   });
