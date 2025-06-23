@@ -1,7 +1,11 @@
+
 const socket = io();
 
-let pseudo = prompt("Entrez votre pseudo :") || "Anonyme";
-socket.emit('setPseudo', pseudo);
+socket.on('connect', () => {
+  let pseudo = prompt("Entrez votre pseudo :") || "Anonyme";
+  socket.emit('setPseudo', pseudo);
+});
+
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
