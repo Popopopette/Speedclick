@@ -12,7 +12,6 @@ app.use(express.static('public'));
 let players = [];
 let hostId = null;
 let roundIndex = -1;
-let gameMode = 'classic';  // Nouveau
 const MAX_ROUNDS = 20;
 const ROUND_TIME = 7000;
 let currentShape = null;
@@ -46,55 +45,21 @@ function calculatePoints(order, shape) {
   return points;
 }
 
-function calculateBattlePoints(order, isRed) {
-  let penalty = 0;
-  if (order === 0) penalty = 0;
-  else if (order === 1) penalty = -1;
-  else if (order === 2) penalty = -2;
-  else if (order === 3) penalty = -3;
-  else if (order === 4) penalty = -4;
-  else penalty = -5;
-
-  return isRed ? penalty * 2 : penalty;
-}
-
 function startRound() {
   roundIndex++;
-  if (gameMode === 'classic' && roundIndex >= MAX_ROUNDS) return endGame();
+  if (roundIndex >= MAX_ROUNDS) return endGame();
   clickData = [];
   currentShape = randomShape(`round-${roundIndex}`);
   io.emit('newShape', { shape: currentShape, round: roundIndex + 1 });
 
   setTimeout(() => {
-    // Ajouter les joueurs non cliquants
-    const nonClickers = players
-      .filter(p => !clickData.some(c => c.id === p.id) && p.score > 0)
-      .map(p => ({ id: p.id, timestamp: Infinity }));
-
-    clickData.push(...nonClickers);
     clickData.sort((a, b) => a.timestamp - b.timestamp);
-
     clickData.forEach((entry, index) => {
       const player = players.find(p => p.id === entry.id);
-      if (!player || player.score <= 0) return;
-
-      let points = gameMode === 'battle'
-        ? calculateBattlePoints(index, currentShape.color === 'red')
-        : calculatePoints(index, currentShape);
-
-      player.score += points;
-
-      if (gameMode === 'battle' && player.score <= 0) {
-        player.score = 0; // empêcher score négatif
-        io.to(player.id).emit('eliminated');
+      if (player) {
+        player.score += calculatePoints(index, currentShape);
       }
     });
-
-    if (gameMode === 'battle') {
-      const alive = players.filter(p => p.score > 0);
-      if (alive.length <= 1) return endGame();
-    }
-
     io.emit('scoreUpdate', players);
     startRound();
   }, ROUND_TIME);
@@ -105,26 +70,26 @@ function endGame() {
   roundIndex = -1;
   currentShape = null;
   clickData = [];
-  gameMode === 'battle'
-    ? players.forEach(p => (p.score = 20))
-    : players.forEach(p => (p.score = 0));
+  players.forEach(p => (p.score = 0));
 }
 
 io.on('connection', socket => {
   socket.on('setPseudo', pseudo => {
     const icon = icons[Math.floor(Math.random() * icons.length)];
-    players.push({ id: socket.id, pseudo, icon, score: 20, x: 0, y: 0 });
+    players.push({ id: socket.id, pseudo, icon, score: 0, x: 0, y: 0 });
     if (!hostId) hostId = socket.id;
     io.emit('lobbyUpdate', { players, hostId });
   });
 
-  socket.on('startGame', mode => {
-    if (socket.id === hostId) {
-      gameMode = mode || 'classic';
-      io.emit('countdown');
-      setTimeout(() => startRound(), 4000);
-    }
-  });
+  socket.on('startGame', () => {
+  if (socket.id === hostId) {
+    io.emit('countdown'); // tous les clients reçoivent le signal "3,2,1..."
+    setTimeout(() => {
+      startRound(); // le vrai jeu commence après 4 secondes
+    }, 4000); // 3 sec de chiffres + 1 pour "GO"
+  }
+});
+
 
   socket.on('playerClick', () => {
     if (roundIndex >= 0 && !clickData.some(c => c.id === socket.id)) {
@@ -134,13 +99,17 @@ io.on('connection', socket => {
 
   socket.on('mouseMove', ({ x, y }) => {
     const player = players.find(p => p.id === socket.id);
-    if (player && player.score > 0) {
+    if (player) {
       player.x = x;
       player.y = y;
     }
-    io.emit('pointerUpdate', players
-      .filter(p => p.score > 0)
-      .map(p => ({ id: p.id, x: p.x, y: p.y, icon: p.icon, pseudo: p.pseudo })));
+    io.emit('pointerUpdate', players.map(p => ({
+      id: p.id,
+      x: p.x,
+      y: p.y,
+      icon: p.icon,
+      pseudo: p.pseudo
+    })));
   });
 
   socket.on('chatMessage', message => {
@@ -158,4 +127,4 @@ io.on('connection', socket => {
   });
 });
 
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server on port ${PORT}`));
