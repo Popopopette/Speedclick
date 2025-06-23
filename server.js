@@ -12,7 +12,7 @@ app.use(express.static('public'));
 let players = [];
 let hostId = null;
 let roundIndex = -1;
-let gameMode = 'classic';
+let gameMode = 'classic';  // Nouveau
 const MAX_ROUNDS = 20;
 const ROUND_TIME = 7000;
 let currentShape = null;
@@ -46,13 +46,16 @@ function calculatePoints(order, shape) {
   return points;
 }
 
-function calculateBattlePoints(order) {
-  if (order === 0) return 0;
-  if (order === 1) return -1;
-  if (order === 2) return -2;
-  if (order === 3) return -3;
-  if (order === 4) return -4;
-  return -5;
+function calculateBattlePoints(order, isRed) {
+  let penalty = 0;
+  if (order === 0) penalty = 0;
+  else if (order === 1) penalty = -1;
+  else if (order === 2) penalty = -2;
+  else if (order === 3) penalty = -3;
+  else if (order === 4) penalty = -4;
+  else penalty = -5;
+
+  return isRed ? penalty * 2 : penalty;
 }
 
 function startRound() {
@@ -63,6 +66,7 @@ function startRound() {
   io.emit('newShape', { shape: currentShape, round: roundIndex + 1 });
 
   setTimeout(() => {
+    // Ajouter les joueurs non cliquants
     const nonClickers = players
       .filter(p => !clickData.some(c => c.id === p.id) && p.score > 0)
       .map(p => ({ id: p.id, timestamp: Infinity }));
@@ -72,26 +76,23 @@ function startRound() {
 
     clickData.forEach((entry, index) => {
       const player = players.find(p => p.id === entry.id);
-      if (player && player.score > 0) {
-        let points = gameMode === 'battle'
-          ? calculateBattlePoints(index)
-          : calculatePoints(index, currentShape);
+      if (!player || player.score <= 0) return;
 
-        if (gameMode === 'battle' && currentShape.color === 'red') {
-          points *= 2;
-        }
+      let points = gameMode === 'battle'
+        ? calculateBattlePoints(index, currentShape.color === 'red')
+        : calculatePoints(index, currentShape);
 
-        player.score += points;
+      player.score += points;
 
-        if (gameMode === 'battle' && player.score <= 0) {
-          io.to(player.id).emit('eliminated');
-        }
+      if (gameMode === 'battle' && player.score <= 0) {
+        player.score = 0; // empêcher score négatif
+        io.to(player.id).emit('eliminated');
       }
     });
 
     if (gameMode === 'battle') {
-      const remaining = players.filter(p => p.score > 0);
-      if (remaining.length <= 1) return endGame();
+      const alive = players.filter(p => p.score > 0);
+      if (alive.length <= 1) return endGame();
     }
 
     io.emit('scoreUpdate', players);
@@ -104,7 +105,9 @@ function endGame() {
   roundIndex = -1;
   currentShape = null;
   clickData = [];
-  players.forEach(p => p.score = 20);
+  gameMode === 'battle'
+    ? players.forEach(p => (p.score = 20))
+    : players.forEach(p => (p.score = 0));
 }
 
 io.on('connection', socket => {
@@ -119,9 +122,7 @@ io.on('connection', socket => {
     if (socket.id === hostId) {
       gameMode = mode || 'classic';
       io.emit('countdown');
-      setTimeout(() => {
-        startRound();
-      }, 4000);
+      setTimeout(() => startRound(), 4000);
     }
   });
 
@@ -137,13 +138,9 @@ io.on('connection', socket => {
       player.x = x;
       player.y = y;
     }
-    io.emit('pointerUpdate', players.filter(p => p.score > 0).map(p => ({
-      id: p.id,
-      x: p.x,
-      y: p.y,
-      icon: p.icon,
-      pseudo: p.pseudo
-    })));
+    io.emit('pointerUpdate', players
+      .filter(p => p.score > 0)
+      .map(p => ({ id: p.id, x: p.x, y: p.y, icon: p.icon, pseudo: p.pseudo })));
   });
 
   socket.on('chatMessage', message => {
@@ -161,4 +158,4 @@ io.on('connection', socket => {
   });
 });
 
-server.listen(PORT, () => console.log(`Server on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
